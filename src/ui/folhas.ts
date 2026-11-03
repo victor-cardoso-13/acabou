@@ -1,6 +1,6 @@
 /** As janelas que sobem de baixo ("folhas"): editar produto, escolher figurinha, nomes, confirmar, resumo, casa. */
 import {
-  achar, adicionarMembro, apagarLista, apagarProduto, capitalizar, criarLista, criarProduto, editarProduto, limparNome,
+  achar, apagarLista, apagarProduto, capitalizar, criarLista, emailValido, mostrarCodigo, normalizarEmail, criarProduto, editarProduto, limparNome,
   listarItens, renomearLista, trocarFigurinhaLista, type DadosProduto,
 } from '../motor/casa.ts';
 import { EMOJIS, primeiroEmoji, sugerirEmoji } from '../motor/emoji.ts';
@@ -158,32 +158,47 @@ export function resumoSheet(r: ResumoCompras, depois: () => void): void {
   });
 }
 
-/* ---------- a casa: pessoas e sair ---------- */
-export function casaSheet(sair: () => void): void {
+/* ---------- a casa: pessoas, convite e sair ---------- */
+export function casaSheet(sair: () => void, convite?: { codigo: string; email: string }): void {
   const c = casa();
-  const nomeDe = (email: string) => Object.entries(c.nomes).find(([uid]) => uid === S.eu?.uid && email === S.eu?.email)?.[1] ?? '';
+  const nomeDe = (email: string) => (email === S.eu?.email ? S.eu.nome : '');
   const pessoas = c.membros.map((m, k) =>
     `<div class="pessoa"><span class="av c${k % 4}">${e((nomeDe(m) || m).charAt(0).toUpperCase())}</span><span>${e(m)}${m === S.eu?.email ? ' (você)' : ''}</span></div>`).join('');
   const cheia = c.membros.length >= LIMITES.membros;
-  folha(`<h2>Nossa casa</h2>${pessoas}
-    ${cheia ? '<p class="explica">A casa já tem 4 pessoas.</p>' : `
-    <div class="rot">Adicionar quem mora com você</div>
-    <form class="linha-form" id="fMembro"><input class="campo" type="email" id="fEmail" placeholder="e-mail da pessoa" autocomplete="off" autocapitalize="none" maxlength="${LIMITES.email}" aria-label="E-mail da pessoa"><button class="ok">Adicionar</button></form>
-    <p class="explica" id="fMembroDica">A pessoa precisa <b>criar a conta no Acabou! antes</b>, com esse mesmo e-mail. Depois que você adicionar, a casa aparece no celular dela sozinha.</p>`}
+  const blocoConvite = convite
+    ? `<div class="rot">Convite para ${e(convite.email)}</div>
+       <div class="codigo" id="fCodigo">${e(mostrarCodigo(convite.codigo))}</div>
+       <p class="explica">Mande este código para a pessoa. Ela precisa entrar no app com o e-mail <b>${e(convite.email)}</b> e digitar o código. Vale por 2 dias e só funciona uma vez.</p>
+       <div class="linha-form"><button class="ok" id="fCopiar">Copiar</button>${'share' in navigator ? '<button class="ok" id="fMandar">Mandar</button>' : ''}</div>
+       <button class="cancela" id="fOutro">Gerar outro convite</button>`
+    : cheia ? '<p class="explica">A casa já tem 4 pessoas.</p>' : `
+       <div class="rot">Convidar quem mora com você</div>
+       <form class="linha-form" id="fMembro"><input class="campo" type="email" id="fEmail" placeholder="e-mail da pessoa" autocomplete="off" autocapitalize="none" maxlength="${LIMITES.email}" aria-label="E-mail da pessoa"><button class="ok">Gerar convite</button></form>
+       <p class="explica" id="fMembroDica">A pessoa precisa ter conta no app (a dos jogos serve). O convite só funciona para o e-mail que você digitar aqui.</p>`;
+  folha(`<h2>Nossa casa</h2>${pessoas}${blocoConvite}
     <button class="link" id="fSair">Sair desta conta</button><button class="cancela" id="fFecha">Fechar</button>`, () => {
     $('fFecha').onclick = fecharFolha;
     $('fSair').onclick = () => { fecharFolha(); sair(); };
     const form = document.getElementById('fMembro') as HTMLFormElement | null;
-    if (form) form.onsubmit = ev => {
+    if (form) form.onsubmit = async ev => {
       ev.preventDefault();
-      const r = adicionarMembro(casa(), ($('fEmail') as HTMLInputElement).value);
-      if ('erro' in r) {
-        $('fMembroDica').textContent = { invalido: 'Esse e-mail não parece certo. Confira se digitou direitinho.', repetido: 'Essa pessoa já está na casa.', cheia: 'A casa já tem 4 pessoas.' }[r.erro];
-        return;
-      }
-      fazer(r.escritas, 'Pessoa adicionada');
-      casaSheet(sair);
+      const email = normalizarEmail(($('fEmail') as HTMLInputElement).value);
+      const dica = $('fMembroDica');
+      if (!emailValido(email)) { dica.textContent = 'Esse e-mail não parece certo. Confira se digitou direitinho.'; return; }
+      if (c.membros.includes(email)) { dica.textContent = 'Essa pessoa já está na casa.'; return; }
+      if (!S.convidar) { dica.textContent = 'Convite só funciona com internet e conta.'; return; }
+      dica.textContent = 'Gerando…';
+      try { casaSheet(sair, { codigo: await S.convidar(email), email }); }
+      catch (err) { dica.textContent = S.mensagemErro(err); }
     };
+    const texto = convite ? `Convite para entrar na nossa casa no Acabou!: ${mostrarCodigo(convite.codigo)}\nEntre com o e-mail ${convite.email}.` : '';
+    const copiar = document.getElementById('fCopiar');
+    if (copiar) copiar.onclick = async () => {
+      try { await navigator.clipboard.writeText(mostrarCodigo(convite!.codigo)); copiar.textContent = 'Copiado ✓'; } catch { copiar.textContent = 'Toque e segure o código para copiar'; }
+    };
+    const mandar = document.getElementById('fMandar');
+    if (mandar) mandar.onclick = () => { void navigator.share({ text: texto }).catch(() => {}); };
+    const outro = document.getElementById('fOutro');
+    if (outro) outro.onclick = () => casaSheet(sair);
   });
 }
-

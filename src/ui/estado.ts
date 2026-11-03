@@ -27,6 +27,10 @@ export const S = {
   recem: new Set<string>(),
   semInternet: false,
   repo: null as Repo | null,
+  /** convidar alguém (só existe com a nuvem ligada) */
+  convidar: null as ((email: string) => Promise<string>) | null,
+  /** texto de erro simples para mostrar na tela */
+  mensagemErro: (_e: unknown): string => 'Algo deu errado. Tente de novo daqui a pouco.',
 };
 
 let renderizar: () => void = () => {};

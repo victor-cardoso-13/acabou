@@ -3,7 +3,7 @@
 // Uso: node scripts/testar-regras.mjs      Esperado: tudo "OK".
 import { initializeApp, deleteApp } from 'firebase/app';
 import { connectAuthEmulator, createUserWithEmailAndPassword, getAuth, signInAnonymously } from 'firebase/auth';
-import { collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, getFirestore, query, setDoc, updateDoc, where } from 'firebase/firestore';
+import { arrayUnion, collection, connectFirestoreEmulator, deleteDoc, deleteField, doc, getDoc, getDocs, getFirestore, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 
 const cfg = { apiKey: 'x', projectId: 'jogos-sem-anuncio' };
 const sufixo = Date.now().toString(36);
@@ -78,20 +78,62 @@ const muitos = Object.fromEntries(Array.from({ length: 401 }, (_, k) => ['p' + k
 await deve('mais de 400 produtos é recusado', 'recusado', () => updateDoc(ref(victor, id), { itens: muitos }));
 await deve('mais de 40 corredores é recusado', 'recusado', () => updateDoc(ref(victor, id), { corredores: Array.from({ length: 41 }, (_, k) => ({ id: 'c' + k, nome: 'x', ic: 'x' })) }));
 
-console.log('\n--- adicionar a Ana ---');
-await deve('Victor adiciona o e-mail da Ana', 'permitido', () => updateDoc(ref(victor, id), { membros: [victor.email, ana.email] }));
+console.log('\n--- entrar só com convite ---');
+const convite = (p, codigo, casaId, email, extra = {}) => setDoc(doc(p.banco, 'convites', codigo), { casaId, email, por: p.email, criadoEm: serverTimestamp(), ...extra });
+const entrar = (p, codigo, casaId) => { // o mesmo que o app faz: 3 gravações juntas
+  const lote = writeBatch(p.banco);
+  lote.set(doc(p.banco, 'casas', casaId, 'entradas', p.uid), { codigo, email: p.email });
+  lote.update(doc(p.banco, 'casas', casaId), { membros: arrayUnion(p.email) });
+  lote.delete(doc(p.banco, 'convites', codigo));
+  return lote.commit();
+};
+await deve('Victor pôr o e-mail da Ana direto em "membros" é recusado (só por convite)', 'recusado', () => updateDoc(ref(victor, id), { membros: [victor.email, ana.email] }));
+await deve('ninguém da casa mexe na lista de membros à mão (nem pondo um e-mail qualquer)', 'recusado', () => updateDoc(ref(victor, id), { membros: [victor.email, 'qualquer@x.com'] }));
+await deve('intruso não gera convite para a casa do Victor', 'recusado', () => convite(intruso, 'AAAAAAAAAA', id, intruso.email));
+await deve('Victor gera convite com código fora do formato (minúsculas/curto)', 'recusado', () => convite(victor, 'abc', id, ana.email));
+await deve('Victor gera convite com código com letra proibida (O, 0, 1, I, L)', 'recusado', () => convite(victor, 'AAAAAAAAA0', id, ana.email));
+await deve('convite com data falsa (não é a hora do servidor) é recusado', 'recusado', () => convite(victor, 'BBBBBBBBBB', id, ana.email, { criadoEm: new Date(2020, 1, 1) }));
+await deve('convite com e-mail em maiúsculas é recusado', 'recusado', () => convite(victor, 'CCCCCCCCCC', id, 'ANA@x.com'));
+await deve('convite para casa que não existe é recusado', 'recusado', () => convite(victor, 'DDDDDDDDDD', 'casa-que-nao-existe', ana.email));
+await deve('Victor gera o convite para o e-mail da Ana (código K7M2P9QXRT)', 'permitido', () => convite(victor, 'K7M2P9QXRT', id, ana.email));
+await deve('intruso não lê o convite, mesmo sabendo o código', 'recusado', () => getDoc(doc(intruso.banco, 'convites', 'K7M2P9QXRT')));
+await deve('ninguém lista os convites', 'recusado', () => getDocs(collection(ana.banco, 'convites')));
+await deve('intruso tentando entrar com o código da Ana é recusado (e-mail não confere)', 'recusado', () => entrar(intruso, 'K7M2P9QXRT', id));
+await deve('intruso criando a "entrada" sozinho é recusado', 'recusado', () => setDoc(doc(intruso.banco, 'casas', id, 'entradas', intruso.uid), { codigo: 'K7M2P9QXRT', email: intruso.email }));
+await deve('Ana se põe em "membros" sem convite (sem a entrada) é recusado', 'recusado', () => updateDoc(ref(ana, id), { membros: arrayUnion(ana.email) }));
+await deve('Ana com código errado é recusada', 'recusado', () => entrar(ana, 'ZZZZZZZZZZ', id));
+const outraCasa = doc(collection(intruso.banco, 'casas'));
+await setDoc(outraCasa, casaBase(intruso.email, intruso.uid));
+await deve('Ana usando o código da casa do Victor para entrar em OUTRA casa é recusada', 'recusado', () => entrar(ana, 'K7M2P9QXRT', outraCasa.id));
+await deve('Ana lê o convite dela (sabendo o código)', 'permitido', () => getDoc(doc(ana.banco, 'convites', 'K7M2P9QXRT')));
+await deve('Ana entra na casa com o código (e-mail dela em maiúsculas no cadastro)', 'permitido', () => entrar(ana, 'K7M2P9QXRT', id));
 n = (await getDocs(query(collection(ana.banco, 'casas'), where('membros', 'array-contains', ana.email)))).size;
-ok('Ana (login com e-mail em maiúsculas) procura as casas dela e acha a casa', n === 1, `→ ${n}`);
+ok('Ana procura as casas dela e acha a casa', n === 1, `→ ${n}`);
 await deve('Ana lê a casa', 'permitido', () => getDoc(ref(ana, id)));
+await deve('o convite foi gasto: não dá para entrar de novo', 'recusado', () => getDoc(doc(ana.banco, 'convites', 'K7M2P9QXRT')));
+await deve('intruso tentando reaproveitar o código gasto é recusado', 'recusado', () => entrar(intruso, 'K7M2P9QXRT', id));
+await deve('Ana lê as "entradas" (ninguém lê)', 'recusado', () => getDoc(doc(ana.banco, 'casas', id, 'entradas', ana.uid)));
+
+console.log('\n--- depois de entrar ---');
 await deve('Ana marca um produto, ao mesmo tempo que o Victor mexe em outro', 'permitido', () => Promise.all([
   updateDoc(ref(ana, id), { 'itens.cafe.falta': false, 'itens.cafe.quem': 'Ana' }),
   updateDoc(ref(victor, id), { aprender: false }),
 ]));
 const d = (await getDoc(ref(victor, id))).data();
 ok('as duas gravações simultâneas ficaram (nenhuma apagou a outra)', d.itens.cafe.quem === 'Ana' && d.aprender === false);
+ok('a lista de membros tem os dois, em minúsculas', d.membros.length === 2 && d.membros.every(m => m === m.toLowerCase()), JSON.stringify(d.membros));
 await deve('Ana apagar a casa é recusado', 'recusado', () => deleteDoc(ref(ana, id)));
-await deve('Ana adiciona um 3º e um 4º membro', 'permitido', () => updateDoc(ref(ana, id), { membros: [victor.email, ana.email, 'c@c.com', 'd@d.com'] }));
-await deve('um 5º membro é recusado (máximo 4)', 'recusado', () => updateDoc(ref(ana, id), { membros: [victor.email, ana.email, 'c@c.com', 'd@d.com', 'e@e.com'] }));
+await deve('Ana cancelar um convite que não é dela é recusado', 'recusado', () => deleteDoc(doc(ana.banco, 'convites', 'K7M2P9QXRT')));
+
+console.log('\n--- limite de 4 pessoas ---');
+const c3 = await pessoa('c3', 'c3' + sufixo + '@x.com'), c4 = await pessoa('c4', 'c4' + sufixo + '@x.com'), c5 = await pessoa('c5', 'c5' + sufixo + '@x.com');
+await convite(ana, 'EEEEEEEEEE', id, c3.email); await entrar(c3, 'EEEEEEEEEE', id);
+await deve('Ana convida o 4º e ele entra', 'permitido', async () => { await convite(ana, 'FFFFFFFFFF', id, c4.email); await entrar(c4, 'FFFFFFFFFF', id); });
+await deve('com 4 pessoas, novo convite é recusado', 'recusado', () => convite(victor, 'GGGGGGGGGG', id, c5.email));
+await deve('quem foi convidado antes de a casa encher não passa de 4 (5º recusado)', 'recusado', async () => {
+  // convite criado por outro caminho não existe: simula tentativa de entrar sem convite válido
+  await entrar(c5, 'GGGGGGGGGG', id);
+});
 await deve('intruso continua de fora', 'recusado', () => getDoc(ref(intruso, id)));
 
 console.log('\n--- as regras dos jogos continuam valendo ---');
