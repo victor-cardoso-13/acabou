@@ -8,10 +8,12 @@
  * Consumo esperado: dezenas de gravações por dia (a cota grátis é 20 mil, somada com os jogos).
  */
 import {
-  collection, connectFirestoreEmulator, deleteField, doc, initializeFirestore, onSnapshot, persistentLocalCache,
-  persistentMultipleTabManager, query, setDoc, updateDoc, where, type Unsubscribe,
+  arrayUnion, collection, connectFirestoreEmulator, deleteField, doc, getDoc, initializeFirestore, onSnapshot,
+  persistentLocalCache, persistentMultipleTabManager, query, serverTimestamp, setDoc, updateDoc, where, writeBatch,
+  type Unsubscribe,
 } from 'firebase/firestore';
 import { app, usandoEmulador } from './conta.ts';
+import { gerarCodigoConvite } from '../motor/casa.ts';
 import { APAGAR, type Casa, type Escritas } from '../motor/tipos.ts';
 
 const banco = initializeFirestore(app, {
@@ -67,4 +69,41 @@ export function paraFirestore(escritas: Escritas): Record<string, unknown> {
 export function gravar(casaId: string, escritas: Escritas): Promise<void> {
   if (Object.keys(escritas).length === 0) return Promise.resolve();
   return updateDoc(doc(banco, COLECAO, casaId), paraFirestore(escritas));
+}
+
+/* ---------- convite ----------
+ * Ninguém entra numa casa só porque alguém digitou o e-mail. É preciso as DUAS coisas:
+ *  1. um membro gera um convite para UM e-mail (código de 10 símbolos, vale 2 dias, uma vez só);
+ *  2. a pessoa entra com esse e-mail E digita o código.
+ * Onde fica: convites/{código} = { casaId, email, por, criadoEm }. Só o e-mail convidado consegue ler (e só
+ * sabendo o código); ninguém consegue listar. Regras em Jogos/Computador/firestore.rules.
+ */
+export async function criarConvite(casaId: string, emailConvidado: string, meuEmail: string): Promise<string> {
+  const codigo = gerarCodigoConvite();
+  await setDoc(doc(banco, 'convites', codigo), { casaId, email: emailConvidado, por: meuEmail, criadoEm: serverTimestamp() });
+  return codigo;
+}
+
+/**
+ * Entra na casa com o código. Uma gravação só (tudo ou nada): registra a entrada, põe o e-mail em `membros`
+ * e gasta o convite. Devolve o id da casa. Qualquer problema (código errado, de outro e-mail, vencido ou
+ * já usado) dá o mesmo erro, para não ensinar nada a quem está chutando.
+ */
+export async function entrarPorConvite(codigo: string, meuEmail: string, meuUid: string): Promise<string> {
+  const invalido = () => Object.assign(new Error('convite'), { code: 'acabou/convite-invalido' });
+  try {
+    const convite = await getDoc(doc(banco, 'convites', codigo));
+    const casaId = convite.data()?.casaId;
+    if (typeof casaId !== 'string') throw invalido();
+    const lote = writeBatch(banco);
+    lote.set(doc(banco, 'casas', casaId, 'entradas', meuUid), { codigo, email: meuEmail });
+    lote.update(doc(banco, 'casas', casaId), { membros: arrayUnion(meuEmail) });
+    lote.delete(doc(banco, 'convites', codigo));
+    await lote.commit();
+    return casaId;
+  } catch (e) {
+    // recusa das regras (código errado, de outro e-mail, vencido, usado) = sempre a mesma mensagem
+    if ((e as { code?: string })?.code === 'permission-denied' || (e as { code?: string })?.code === 'not-found') throw invalido();
+    throw e;
+  }
 }

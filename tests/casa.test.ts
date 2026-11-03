@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
-  acabouDeEntrar, achar, adicionarMembro, alternarFalta, apagarLista, apagarProduto, aplicar, aprenderOrdem,
+  acabouDeEntrar, achar, alternarFalta, apagarLista, apagarProduto, aplicar, aprenderOrdem,
   agruparMercado, casaInicial, comecarCompras, criarLista, criarProduto, editarProduto, inicioDasCompras, inverso,
   itensFaltando, lerCasa, marcarFalta, marcarSemEstoque, moverLista, nomeDoEmail, novoId, pegar, renomearLista,
-  terminarCompras, tirarFalta, trocarFigurinhaLista, acharDeNovo, definirAprender, listarItens,
+  terminarCompras, tirarFalta, gerarCodigoConvite, normalizarCodigo, mostrarCodigo, emailValido, normalizarEmail, ALFABETO_CONVITE, trocarFigurinhaLista, acharDeNovo, definirAprender, listarItens,
 } from '../src/motor/casa.ts';
 import { APAGAR } from '../src/motor/tipos.ts';
 
@@ -258,16 +258,32 @@ describe('corredores e categorias', () => {
   });
 });
 
-describe('pessoas', () => {
-  it('adicionar membro: normaliza, recusa repetido, e-mail ruim e casa cheia', () => {
-    const c = nova();
-    const ok = adicionarMembro(c, '  Ana@Email.COM ');
-    expect('escritas' in ok && ok.escritas.membros).toEqual(['victor@email.com', 'ana@email.com']);
-    expect(adicionarMembro(c, 'VICTOR@email.com')).toEqual({ erro: 'repetido' });
-    expect(adicionarMembro(c, 'sem-arroba')).toEqual({ erro: 'invalido' });
-    const cheia = { ...c, membros: ['a@a.com', 'b@a.com', 'c@a.com', 'd@a.com'] };
-    expect(adicionarMembro(cheia, 'e@a.com')).toEqual({ erro: 'cheia' });
+describe('pessoas e convite', () => {
+  it('e-mail: minúsculas e formato', () => {
+    expect(normalizarEmail('  Ana@Email.COM ')).toBe('ana@email.com');
+    expect(emailValido('ana@email.com')).toBe(true);
+    expect(emailValido('sem-arroba')).toBe(false);
   });
+  it('código de convite: 10 símbolos, só do alfabeto, e diferente a cada vez', () => {
+    const codigos = new Set(Array.from({ length: 200 }, () => gerarCodigoConvite()));
+    expect(codigos.size).toBe(200);
+    for (const c of codigos) {
+      expect(c).toHaveLength(10);
+      expect([...c].every(ch => ALFABETO_CONVITE.includes(ch))).toBe(true);
+    }
+  });
+  it('código: ignora bytes que enviesariam o sorteio (>= 248)', () => {
+    const seq = [255, 250, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13];
+    expect(gerarCodigoConvite(() => Uint8Array.from(seq))).toBe('ABCDEFGHJK');
+  });
+  it('normalizar o que a pessoa digita', () => {
+    expect(normalizarCodigo('k7m2p-9qxrt')).toBe('K7M2P9QXRT');
+    expect(normalizarCodigo(' K7M2P 9QXRT ')).toBe('K7M2P9QXRT');
+    expect(normalizarCodigo('K7M2P')).toBeNull();
+    expect(normalizarCodigo('K7M2P-9QXR0')).toBeNull(); // 0 não existe no alfabeto
+    expect(normalizarCodigo('')).toBeNull();
+  });
+  it('mostrar com hífen', () => expect(mostrarCodigo('K7M2P9QXRT')).toBe('K7M2P-9QXRT'));
   it('nome a partir do e-mail', () => {
     expect(nomeDoEmail('ana@x.com')).toBe('Ana');
     expect(nomeDoEmail('')).toBe('Eu');

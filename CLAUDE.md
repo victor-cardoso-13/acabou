@@ -16,7 +16,8 @@ Referência visual aprovada: `referencia/mock.html` (+ `catalogo.js`, `prints/`)
 ## Nuvem
 Coleção `casas/{casaId}`: UM documento (`membros`, `corredores`, `categorias`, `itens`, `noMercado`, `nomes`, `aprender`). Grava-se só o campo mexido (`updateDoc` com caminho). Nunca dar `await` na gravação no toque (offline não resolve). E-mails sempre minúsculos. Ids só `[A-Za-z0-9]`.
 Regras: `../../Jogos/Computador/firestore.rules` (bloco `casas`). **Limite assumido:** o Firestore não olha dentro de cada produto; tamanho de nome/figurinha só o app corta (`LIMITES`, `lerCasa`); as regras limitam formato e quantidade (400 itens, 40 listas, 4 membros).
-A pessoa cria a conta ANTES de ser adicionada. Toda mudança nas regras: avisar o Victor antes do deploy e rodar os testes abaixo.
+**Entrada só por convite (2 travas):** um membro gera `convites/{código}` (`{casaId,email,por,criadoEm}`, código de 10 símbolos, vale 2 dias, uso único); a pessoa entra com o e-mail convidado E digita o código. `entrarPorConvite` = 1 gravação em lote (`casas/{id}/entradas/{uid}` + `membros` + apaga o convite). `membros` nunca é editado à mão (a regra recusa). Ninguém lista casas nem convites. A pessoa precisa ter conta antes (a dos jogos serve).
+Toda mudança nas regras: avisar o Victor antes do deploy e rodar os testes abaixo.
 
 ## Testes
 - `npm test` (motor), `npx tsc --noEmit -p .`

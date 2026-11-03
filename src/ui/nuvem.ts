@@ -1,5 +1,5 @@
 /** Liga o app à nuvem: conta, a casa ao vivo e a gravação. Só é carregado depois que a página abre. */
-import { nomeDoEmail, registrarNome, casaInicial } from '../motor/casa.ts';
+import { nomeDoEmail, normalizarCodigo, registrarNome, casaInicial } from '../motor/casa.ts';
 import { lerCasa } from '../motor/casa.ts';
 import { casaSumiu } from './app.ts';
 import { ligarSair } from './eventos.ts';
@@ -17,13 +17,14 @@ export async function iniciarNuvem(): Promise<void> {
     return;
   }
   ligarSair(() => { void conta.sair(); });
+  S.mensagemErro = conta.mensagemDeErro;
 
   let parar: (() => void) | null = null;
   let nomeRegistrado = false;
 
   conta.observarConta(u => {
     parar?.(); parar = null;
-    S.casa = null; S.repo = null; casaSumiu(); nomeRegistrado = false;
+    S.casa = null; S.repo = null; S.convidar = null; casaSumiu(); nomeRegistrado = false;
     if (!u) {
       S.eu = null;
       mostrarLogin({
@@ -38,9 +39,15 @@ export async function iniciarNuvem(): Promise<void> {
       if (!c) {
         S.casa = null; S.repo = null; casaSumiu();
         const criar = async () => { await casas.criarCasa(casaInicial(eu.email, eu.uid, eu.nome)); };
-        mostrarSemCasa(eu.email, criar, () => { void conta.sair(); }, conta.mensagemDeErro);
+        const entrar = async (texto: string) => {
+          const codigo = normalizarCodigo(texto);
+          if (!codigo) throw Object.assign(new Error('codigo'), { code: 'acabou/convite-invalido' });
+          await casas.entrarPorConvite(codigo, eu.email, eu.uid); // a casa aparece sozinha (a busca ao vivo a encontra)
+        };
+        mostrarSemCasa(eu.email, criar, entrar, () => { void conta.sair(); }, conta.mensagemDeErro);
         return;
       }
+      S.convidar = email => casas.criarConvite(c.id, email, eu.email);
       S.repo = { gravar: escritas => { casas.gravar(c.id, escritas).catch(err => avisar(conta.mensagemDeErro(err))); } };
       receberCasa(c.dados);
       if (!nomeRegistrado && S.casa) {

@@ -63,6 +63,7 @@ export function mensagemDeErro(e: unknown): string {
     'auth/user-not-found': 'E-mail ou senha incorretos.',
     'auth/too-many-requests': 'Muitas tentativas seguidas. Espere alguns minutos e tente de novo.',
     'auth/network-request-failed': 'Sem internet agora. Tente de novo quando a internet voltar.',
+    'acabou/convite-invalido': 'Esse convite não confere ou já não vale. Confira o código e se está com o e-mail certo, ou peça outro.',
     'permission-denied': 'Sem permissão para isso. Confira se o e-mail está certo.',
     unavailable: 'Sem internet agora. As marcações ficam guardadas e sobem quando a internet voltar.',
   };

@@ -20,6 +20,7 @@ export function iniciarDemo(): void {
   S.eu = { uid: 'u1', email: 'victor@exemplo.com', nome: 'Victor' };
   S.casa = c;
   S.repo = { gravar: () => {} };
+  S.convidar = async () => 'K7M2P9QXRT';
   render();
   // Para os testes de tela: window.__acabou.remoto('papel') faz a "Ana" marcar algo no celular dela.
   (window as unknown as Record<string, unknown>).__acabou = {

@@ -50,14 +50,17 @@ export function mostrarLogin(acoes: AcoesLogin, modoInicial: 'entrar' | 'criar' 
   desenhar();
 }
 
-export function mostrarSemCasa(email: string, criar: () => Promise<void>, sair: () => void, erro: (e: unknown) => string): void {
+export function mostrarSemCasa(
+  email: string, criar: () => Promise<void>, entrarComCodigo: (codigo: string) => Promise<void>, sair: () => void, erro: (e: unknown) => string,
+): void {
   app().innerHTML = `<div class="entrada"><h1>Acabou!</h1>
-    <div class="cartao"><b>Ainda não tem uma casa aqui.</b>
-      <p class="explica">Se a sua casa já foi criada por outra pessoa, peça para ela adicionar este e-mail em <b>Nossa casa</b>:</p>
-      <p><b>${e(email)}</b></p>
-      <p class="explica">Quando ela adicionar, a casa aparece aqui sozinha. Não precisa fazer nada.</p></div>
+    <div class="cartao"><b>Tenho um convite</b>
+      <p class="explica">Quem criou a casa gera um convite em <b>Nossa casa</b> e manda o código para você. Entre com este e-mail: <b>${e(email)}</b>.</p>
+      <input class="campo" id="cCodigo" type="text" placeholder="Código do convite" autocomplete="off" autocapitalize="characters" maxlength="14" aria-label="Código do convite">
+      <p class="erro" id="cErroConvite" role="alert"></p>
+      <button class="ok" id="cEntrar">Entrar na casa</button></div>
     <div class="cartao"><b>É a primeira vez de vocês?</b>
-      <p class="explica">Crie a casa e depois adicione o e-mail de quem mora com você. A outra pessoa precisa criar a conta antes.</p>
+      <p class="explica">Crie a casa e depois convide quem mora com você.</p>
       <p class="erro" id="cErro" role="alert"></p>
       <button class="ok" id="cCriar">Criar a nossa casa</button></div>
     <button class="troca" id="cSair">Sair desta conta</button></div>`;
@@ -68,6 +71,16 @@ export function mostrarSemCasa(email: string, criar: () => Promise<void>, sair: 
     try { await criar(); } catch (err) {
       bt.disabled = false; bt.textContent = 'Criar a nossa casa';
       document.getElementById('cErro')!.textContent = erro(err);
+    }
+  };
+  const be = document.getElementById('cEntrar') as HTMLButtonElement;
+  be.onclick = async () => {
+    const msg = document.getElementById('cErroConvite')!;
+    msg.textContent = '';
+    be.disabled = true; be.textContent = 'Entrando…';
+    try { await entrarComCodigo((document.getElementById('cCodigo') as HTMLInputElement).value); } catch (err) {
+      be.disabled = false; be.textContent = 'Entrar na casa';
+      msg.textContent = erro(err);
     }
   };
 }

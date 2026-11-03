@@ -275,14 +275,29 @@ export const definirAprender = (ligado: boolean): Escritas => ({ aprender: ligad
 export const normalizarEmail = (e: string): string => String(e ?? '').trim().toLowerCase();
 export const emailValido = (e: string): boolean => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) && e.length <= LIMITES.email;
 
-export type ErroMembro = 'invalido' | 'repetido' | 'cheia';
-export function adicionarMembro(casa: Casa, email: string): { escritas: Escritas } | { erro: ErroMembro } {
-  const e = normalizarEmail(email);
-  if (!emailValido(e)) return { erro: 'invalido' };
-  if (casa.membros.includes(e)) return { erro: 'repetido' };
-  if (casa.membros.length >= LIMITES.membros) return { erro: 'cheia' };
-  return { escritas: { membros: [...casa.membros, e] } };
+/** Letras e números do código de convite, sem os que se confundem (0/O, 1/I/L). 31 símbolos. */
+export const ALFABETO_CONVITE = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+export const TAMANHO_CONVITE = 10;
+
+/** Código de convite aleatório (10 símbolos ≈ 8 × 10^14 possibilidades). `bytes` vem do crypto do navegador. */
+export function gerarCodigoConvite(bytes: (n: number) => Uint8Array = n => crypto.getRandomValues(new Uint8Array(n))): string {
+  let c = '';
+  while (c.length < TAMANHO_CONVITE) {
+    for (const b of bytes(16)) {
+      if (b < 248 && c.length < TAMANHO_CONVITE) c += ALFABETO_CONVITE[b % 31]; // 248 = 31×8: sem favorecer nenhuma letra
+    }
+  }
+  return c;
 }
+
+/** O que a pessoa digitou ("k7m2-9qxp 4a") vira o código; texto que não é um código → null. */
+export function normalizarCodigo(texto: string): string | null {
+  const c = String(texto ?? '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+  return c.length === TAMANHO_CONVITE && [...c].every(ch => ALFABETO_CONVITE.includes(ch)) ? c : null;
+}
+
+/** "K7M2P-9QXRT" (mais fácil de ler e de ditar). */
+export const mostrarCodigo = (c: string): string => `${c.slice(0, 5)}-${c.slice(5)}`;
 
 export const registrarNome = (casa: Casa, uid: string, nome: string): Escritas => {
   const n = limparNome(nome);
