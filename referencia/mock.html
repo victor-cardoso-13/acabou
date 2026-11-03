@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acabou! — mock</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* identidade da fábrica: creme + tinta + âmbar. Layout: guia à esquerda, celular à direita; no celular de verdade, guia vira faixa no topo */
+  --creme:#f7ecd8; --papel:#fffaf1; --tinta:#3b2f2a; --tinta-suave:#7a6a60;
+  --ambar:#e8a33d; --ambar-forte:#b8730f; --ambar-claro:#fde6bd;
+  --verde:#4f8a5b; --verde-claro:#dcefdc; --linha:#ead9bd;
+  --f-titulo:"Fredoka","Nunito",system-ui,sans-serif;
+  --f-texto:"Nunito",system-ui,-apple-system,sans-serif;
+  color-scheme: light;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--creme);color:var(--tinta);font-family:var(--f-texto);font-size:16px;
+  display:flex;gap:40px;align-items:center;justify-content:center;padding:24px;}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--ambar-forte);outline-offset:2px}
+h1,h2,h3{font-family:var(--f-titulo);text-wrap:balance;margin:0}
+
+/* ---------- GUIA ---------- */
+.guia{width:360px;max-height:100%;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.guia .marca{font-family:var(--f-titulo);font-size:28px;font-weight:700}
+.guia .sub{color:var(--tinta-suave);margin-top:-8px;line-height:1.4}
+.passo-atual{background:var(--papel);border:2px solid var(--ambar);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:10px;box-shadow:0 6px 0 var(--ambar-claro)}
+.passo-atual .n{font-weight:800;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--ambar-forte)}
+.passo-atual h2{font-size:22px}
+.passo-atual p{margin:0;line-height:1.45}
+.btn-guia{background:var(--tinta);color:var(--papel);border:0;border-radius:14px;padding:12px 14px;font-weight:800}
+.lista-passos{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.lista-passos li{display:flex;gap:10px;align-items:center;padding:5px 8px;border-radius:10px;color:var(--tinta-suave);font-weight:600}
+.lista-passos li .b{width:24px;height:24px;border-radius:50%;border:2px solid var(--linha);display:grid;place-items:center;font-size:13px;flex:none}
+.lista-passos li.feito{color:var(--tinta)}
+.lista-passos li.feito .b{background:var(--verde);border-color:var(--verde);color:#fff}
+.lista-passos li.agora{background:var(--ambar-claro);color:var(--tinta)}
+.lista-passos li.agora .b{border-color:var(--ambar-forte)}
+
+/* ---------- CELULAR ---------- */
+.celular{width:390px;height:min(820px,100%);border:10px solid var(--tinta);border-radius:46px;overflow:hidden;background:var(--papel);
+  position:relative;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(59,47,42,.25);flex:none}
+.topo{padding:18px 18px 10px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--linha)}
+.topo .tit{flex:1}
+.topo h1{font-size:24px}
+.topo .s{font-size:13px;color:var(--tinta-suave);font-weight:700}
+.avs{display:flex}
+.av{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:14px;border:2px solid var(--papel);color:#fff}
+.av.v{background:#7a5c4a}.av.a{background:#c0698a;margin-left:-8px}
+.av.mercado{box-shadow:0 0 0 3px var(--verde)}
+.conteudo{flex:1;overflow-y:auto;padding:14px 16px 90px;display:flex;flex-direction:column;gap:16px;scrollbar-width:none}
+.conteudo::-webkit-scrollbar{display:none}
+.abas{display:flex;border-top:1px solid var(--linha);background:var(--papel);padding:6px 6px 14px}
+.abas button{flex:1;border:0;background:none;padding:8px 4px;border-radius:14px;display:flex;flex-direction:column;align-items:center;gap:2px;font-weight:800;font-size:13px;color:var(--tinta-suave);position:relative}
+.abas button .ic{font-size:24px;line-height:1}
+.abas button.on{background:var(--ambar-claro);color:var(--tinta)}
+.abas .badge{position:absolute;top:2px;right:calc(50% - 26px);background:var(--ambar-forte);color:#fff;border-radius:10px;padding:0 6px;font-size:12px;line-height:18px}
+
+/* em casa */
+.busca{display:flex;gap:8px}
+.busca input{flex:1;min-width:0;font:inherit;font-size:17px;padding:12px 14px;border-radius:14px;border:2px solid var(--linha);background:#fff;color:var(--tinta)}
+.busca button{border:0;border-radius:14px;background:var(--tinta);color:var(--papel);padding:0 14px;font-weight:800}
+.pulos{flex:none;position:sticky;top:-14px;z-index:2;background:var(--papel);margin:-8px -16px 0;padding:8px 16px;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;border-bottom:1px solid var(--linha)}
+.pulos::-webkit-scrollbar{display:none}
+.pulo{flex:none;border:2px solid var(--linha);background:#fff;border-radius:999px;padding:6px 12px;font-weight:800;font-size:14px;white-space:nowrap}
+#gradeCasa{flex:none;display:flex;flex-direction:column;gap:16px}
+.grupo{scroll-margin-top:60px}
+.grupo h3{font-size:17px;margin:0 2px 8px;font-weight:600}
+.grade{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.item{border:2px solid var(--linha);background:#fff;border-radius:18px;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:2px;min-height:100px;
+  transition:transform .12s, background .2s, border-color .2s}
+.item{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none;touch-action:manipulation}
+.item:active{transform:scale(.94)}
+.item.segurando{transform:scale(.9);border-color:var(--tinta);transition:transform .5s, border-color .5s}
+.item .e{font-size:30px;line-height:1.1}
+.item .nm{font-weight:800;font-size:14px;line-height:1.15;text-align:center;overflow-wrap:anywhere}
+.item .tag{font-size:11px;font-weight:700;color:var(--ambar-forte);min-height:14px}
+.item.falta{background:var(--ambar-claro);border-color:var(--ambar)}
+.item.falta .e{animation:pula .35s}
+.item.criar{border-style:dashed;border-color:var(--ambar);background:var(--papel)}
+.vazio{color:var(--tinta-suave);text-align:center;margin:0}
+.sugestao{background:#fff;border:2px dashed var(--ambar);border-radius:18px;padding:12px 14px;display:flex;gap:10px;align-items:center}
+.sugestao .tx{flex:1;font-size:14px;line-height:1.35}
+.sugestao .tx b{font-size:15px}
+.sugestao button{border:0;background:var(--ambar);border-radius:12px;padding:10px 12px;font-weight:800}
+.pill{display:inline-block;font-size:11px;font-weight:800;background:var(--tinta);color:var(--papel);border-radius:8px;padding:1px 6px;vertical-align:2px}
+
+/* mercado */
+.resumo{background:var(--tinta);color:var(--papel);border-radius:20px;padding:16px;display:flex;flex-direction:column;gap:10px}
+.resumo .grande{font-family:var(--f-titulo);font-size:24px;font-weight:600}
+.resumo button{border:0;background:var(--ambar);color:var(--tinta);border-radius:14px;padding:14px;font-weight:800;font-size:18px}
+.aovivo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:14px;color:var(--verde)}
+.aovivo i{width:10px;height:10px;border-radius:50%;background:var(--verde);animation:pisca 1.4s infinite}
+.barra{height:12px;background:var(--linha);border-radius:8px;overflow:hidden}
+.barra i{display:block;height:100%;background:var(--verde);border-radius:8px;transition:width .4s}
+.secao h3{font-size:17px;display:flex;align-items:center;gap:8px;margin:0 2px 8px;line-height:1.2}
+.secao h3 small{display:block;font-family:var(--f-texto);font-size:12px;color:var(--tinta-suave);font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+.num{background:var(--ambar);color:var(--tinta);border-radius:50%;width:28px;height:28px;display:grid;place-items:center;font-size:14px;font-weight:800;flex:none;font-family:var(--f-texto)}
+.linhas{display:flex;flex-direction:column;gap:8px}
+.linha{display:flex;align-items:center;gap:10px;background:#fff;border:2px solid var(--linha);border-radius:16px;padding:12px;width:100%;text-align:left;transition:opacity .3s, transform .3s;min-height:60px}
+.linha .ck{width:30px;height:30px;border-radius:50%;border:3px solid var(--linha);flex:none;display:grid;place-items:center;color:#fff;font-weight:900}
+.linha .e{font-size:26px}
+.linha .tx{flex:1;display:flex;flex-direction:column}
+.linha .tx b{font-size:18px}
+.linha .tx small{color:var(--tinta-suave);font-weight:700;font-size:12px}
+.linha .tx small.novo{color:var(--ambar-forte)}
+.linha .nt{border:0;background:none;color:var(--tinta-suave);font-weight:800;font-size:13px;padding:8px 4px;text-decoration:underline}
+.linha.prev{opacity:.75}
+.linha.no-carrinho{background:var(--verde-claro);border-color:transparent}
+.linha.no-carrinho .ck{background:var(--verde);border-color:var(--verde)}
+.linha.no-carrinho b{text-decoration:line-through;color:var(--tinta-suave)}
+.linha.sem{background:transparent;border-style:dashed}
+.linha.chegou{animation:chegou 1.6s}
+.rotulo-grupo{font-weight:800;font-size:14px;color:var(--tinta-suave);margin:0 2px 6px}
+.fixo{position:absolute;left:16px;right:16px;bottom:92px}
+.fixo button{width:100%;border:0;background:var(--tinta);color:var(--papel);border-radius:16px;padding:16px;font-weight:800;font-size:18px;box-shadow:0 6px 18px rgba(59,47,42,.3)}
+
+/* organizar */
+.segmento{display:flex;background:var(--linha);border-radius:14px;padding:4px;gap:4px}
+.segmento button{flex:1;border:0;background:none;border-radius:11px;padding:10px 6px;font-weight:800;font-size:14px;color:var(--tinta-suave)}
+.segmento button.on{background:var(--papel);color:var(--tinta);box-shadow:0 1px 3px rgba(59,47,42,.15)}
+.explica{margin:0;line-height:1.45;color:var(--tinta-suave)}
+.cor{background:#fff;border:2px solid var(--linha);border-radius:16px;padding:8px;display:flex;flex-direction:column;gap:8px;transition:background .4s}
+.cor.mexeu{background:var(--ambar-claro)}
+.cor .l1{display:flex;align-items:center;gap:8px}
+.emo{width:46px;height:46px;border-radius:12px;border:2px dashed var(--linha);background:var(--papel);font-size:24px;flex:none;padding:0}
+.cor .nm{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.ren{border:0;background:none;padding:0;text-align:left;font-weight:800;font-size:16px;line-height:1.2}
+.ren i{font-style:normal;color:var(--ambar-forte);font-size:13px}
+.ver{border:0;background:none;padding:2px 0 0;font-size:13px;color:var(--tinta-suave);font-weight:700;text-decoration:underline}
+.seta{width:44px;height:44px;border-radius:12px;border:2px solid var(--linha);background:var(--papel);font-size:16px;font-weight:900;flex:none}
+.seta:disabled{opacity:.3}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:2px solid var(--linha);background:var(--papel);border-radius:999px;padding:6px 10px;font-weight:700;font-size:14px}
+.chip.sel{background:var(--ambar-claro);border-color:var(--ambar-forte)}
+.link{border:0;background:none;padding:6px 0;color:#a33;font-weight:800;text-decoration:underline;font-size:14px;align-self:flex-start}
+.novo{border:2px dashed var(--ambar);background:var(--papel);border-radius:16px;padding:14px;font-weight:800;font-size:16px}
+.opcao{display:flex;gap:12px;align-items:flex-start;background:#fff;border:2px solid var(--linha);border-radius:16px;padding:14px}
+.opcao input{width:26px;height:26px;accent-color:var(--verde);flex:none;margin:0}
+.opcao label{line-height:1.4}
+
+/* aviso e folha */
+.aviso{position:absolute;left:16px;right:16px;bottom:92px;background:var(--tinta);color:var(--papel);border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:10px;font-weight:700;
+  transform:translateY(20px);opacity:0;pointer-events:none;transition:.25s;z-index:5}
+.aviso.on{transform:none;opacity:1;pointer-events:auto}
+.aviso span{flex:1}
+.aviso button{border:0;background:none;color:var(--ambar);font-weight:800;text-decoration:underline;padding:4px}
+.veu{position:absolute;inset:0;background:rgba(59,47,42,.45);display:flex;align-items:flex-end;z-index:10}
+.folha{background:var(--papel);width:100%;max-height:88%;overflow-y:auto;border-radius:26px 26px 0 0;padding:20px 18px 28px;display:flex;flex-direction:column;gap:12px;animation:sobe .25s}
+.folha h2{font-size:22px}
+.folha p{margin:0;line-height:1.45}
+.folha .chips .chip{font-size:15px;padding:9px 12px}
+.folha .rot{font-weight:800;color:var(--tinta-suave);font-size:14px;margin-top:4px}
+.folha input[type=text]{font:inherit;font-size:18px;padding:12px 14px;border-radius:14px;border:2px solid var(--linha);background:#fff;color:var(--tinta);width:100%;min-width:0}
+.folha .ok{border:0;background:var(--tinta);color:var(--papel);border-radius:14px;padding:14px;font-weight:800;font-size:17px}
+.folha .ok.perigo{background:#a33}
+.folha .cancela{border:0;background:none;font-weight:800;color:var(--tinta-suave);padding:6px}
+.campo-item{display:flex;gap:10px;align-items:center}
+.campo-item .emo{width:60px;height:60px;font-size:34px}
+.teclado{display:flex;gap:10px;align-items:center;background:#fff;border:2px solid var(--ambar);border-radius:16px;padding:10px}
+.folha .teclado input[type=text]{width:64px;min-width:64px;height:60px;padding:0;font-size:32px;text-align:center;border:2px dashed var(--linha);border-radius:12px;background:var(--papel);flex:none;caret-color:transparent}
+.teclado span{flex:1;min-width:0;font-size:14px;line-height:1.35}
+.teclado small{display:block;color:#a33;font-weight:800}
+.emojis h3{font-size:15px;color:var(--tinta-suave);margin:6px 0 6px}
+.emojis .g{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.emojis .g button{border:0;background:#fff;border-radius:10px;font-size:26px;aspect-ratio:1;padding:0}
+.emojis .g button.sel{background:var(--ambar-claro);box-shadow:inset 0 0 0 2px var(--ambar-forte)}
+
+/* destaque do guia */
+.alvo{position:relative;animation:alvo 1.3s infinite;z-index:1}
+@keyframes alvo{0%,100%{box-shadow:0 0 0 0 rgba(232,163,61,.9)}50%{box-shadow:0 0 0 7px rgba(232,163,61,.35)}}
+@keyframes pula{0%{transform:scale(.6)}60%{transform:scale(1.25)}100%{transform:scale(1)}}
+@keyframes pisca{50%{opacity:.3}}
+@keyframes chegou{0%{background:var(--ambar);transform:translateX(30px)}100%{background:#fff}}
+@keyframes sobe{from{transform:translateY(100%)}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+@media (max-width:820px){
+  body{flex-direction:column;gap:10px;padding:10px;align-items:stretch;justify-content:flex-start}
+  .guia{width:auto;flex:none;overflow:visible}
+  .guia .marca,.guia .sub,.lista-passos{display:none}
+  .passo-atual{padding:12px 14px;gap:6px;box-shadow:none}
+  .passo-atual h2{font-size:18px}
+  .passo-atual p{font-size:15px}
+  .celular{width:100%;height:auto;flex:1;min-height:0;border-width:4px;border-radius:26px}
+}
+</style>
+</head>
+<body>
+
+<aside class="guia" aria-label="Guia do mock">
+  <div class="marca">Acabou!</div>
+  <div class="sub">Mock para testar, já com a lista de vocês. Siga os passos e toque no celular ao lado. Nada aqui é salvo.</div>
+  <div class="passo-atual" id="passo"></div>
+  <ol class="lista-passos" id="passos"></ol>
+</aside>
+
+<main class="celular" aria-label="App no celular">
+  <header class="topo">
+    <div class="tit"><h1 id="titulo">Em casa</h1><div class="s" id="subtitulo"></div></div>
+    <div class="avs"><div class="av v" id="avV" title="Victor">V</div><div class="av a" title="Ana">A</div></div>
+  </header>
+  <section class="conteudo" id="conteudo"></section>
+  <div id="fixo"></div>
+  <nav class="abas">
+    <button data-tab="casa"><span class="ic">🏠</span>Em casa</button>
+    <button data-tab="mercado"><span class="ic">🛒</span>Mercado<span class="badge" id="badge"></span></button>
+    <button data-tab="organizar"><span class="ic">🧭</span>Organizar</button>
+  </nav>
+  <div class="aviso" id="aviso" role="status"><span id="avisoTx"></span><button id="avisoBt"></button></div>
+  <div id="folha"></div>
+</main>
+
+<script src="catalogo.js"></script>
+<script>
+const C = window.CATALOGO;
+const FALTA0 = {filtro:['Ana','7h15'],banana:['Ana','ontem'],detergente:['Victor','8h02'],paofrances:['Victor','ontem'],leiteint:['Ana','ontem'],alho:['Victor','ontem']};
+
+const EMOJIS = [
+ ['Frutas e verduras','🍌 🍎 🍏 🍐 🍊 🍋 🍉 🍇 🍓 🫐 🍈 🍒 🍑 🥭 🍍 🥥 🥝 🍅 🫒 🥑 🍆 🥔 🥕 🌽 🌶️ 🫑 🥒 🥬 🥦 🧄 🧅 🫛 🫜 🫚 🍄 🥜 🌰 🌿 🌱'],
+ ['Padaria e café','🍞 🥖 🥐 🥯 🫓 🧇 🥞 ☕ 🫖 🍵 🧃 🥛 🍼 🍯 🥣 🌾 🫘 🍚 🍝 🍜 🌀'],
+ ['Carnes, frios e ovos','🥩 🍖 🍗 🪽 🥓 🌭 🍔 🐟 🦐 🍤 🥚 🧀 🧈 🐔 🐓 🐄 🐖'],
+ ['Comidas e molhos','🥫 🫙 🧂 🍕 🌮 🍟 🧆 🥪 🍱 🍣 🥢 🍲 🥘 🍳 🔴 🟡 🟠 🟢 🟤 ⚪'],
+ ['Doces e bebidas','🍫 🍬 🍭 🍮 🍰 🧁 🍪 🍩 🍦 🍨 🍿 🥤 🧋 🍷 🍺 🥂 🧊 💧 🍶 🫗'],
+ ['Limpeza e casa','🧶 🥈 🎞️ 🧽 🧴 🧼 🫧 🧺 🪣 🧹 🧻 🧾 🗑️ 🧪 🦟 🌸 🐨 💡 🔋 🕯️ 🔥 🛢️ ⚗️'],
+ ['Banheiro e cuidados','🪥 🦷 🧵 👂 💨 🌬️ 🛁 🧖 👶 💊 🩹 💄 🪒 🧷'],
+ ['Outros','🛒 📦 📃 ✨ 💎 💍 💪 🐶 🐱 🎁 ⭐ ❤️ 🪵']
+].map(([t,s])=>[t,s.split(' ')]);
+const DICA = {maizena:'🌽',milho:'🌽',batata:'🥔',tomate:'🍅',limao:'🍋',maca:'🍎',uva:'🍇',pimenta:'🌶️',oregano:'🌿',fermento:'🧁',
+  queijo:'🧀',agua:'💧',refri:'🥤',cerveja:'🍺',vinho:'🍷',biscoito:'🍪',bolacha:'🍪',pipoca:'🍿',sorvete:'🍨',racao:'🐶',pilha:'🔋',
+  aluminio:'🧻',pvc:'🧻',desodorante:'🧴',fio:'🦷',cotonete:'🩹',pano:'🧽',pao:'🍞',leite:'🥛',carne:'🥩',peixe:'🐟',doce:'🍬',bolo:'🍰',
+  cha:'🫖',suco:'🧃',frango:'🍗',ovo:'🥚',arroz:'🍚',feijao:'🫘',macarrao:'🍝',farinha:'🌾',sabao:'🧼',limpeza:'🧽',fruta:'🍎',verdura:'🥬'};
+
+let S;
+function reset(){
+  S = {
+    tab:'casa', org:'corredores', passo:0, comprando:false, aprender:false, picks:[], aberta:null, mexeu:null, filtro:'', sugestaoFeita:false,
+    corredores: C.corredores.map(([id,nome,ic])=>({id,nome,ic})),
+    categorias: C.categorias.map(([id,nome,ic])=>({id,nome,ic})),
+    itens: C.itens.map(([id,nome,ic,cat,cor])=>{
+      const f = FALTA0[id];
+      return {id,nome,ic,cat,cor,falta:!!f,quem:f?f[0]:'',hora:f?f[1]:'',carrinho:false,sem:false,chegou:false};
+    })
+  };
+}
+const esc = t => String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = t => String(t).normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+const $ = id => document.getElementById(id);
+const item = id => S.itens.find(i=>i.id===id);
+const listaDe = tipo => tipo==='cor' ? S.corredores : S.categorias;
+const achar = (tipo,id) => listaDe(tipo).find(x=>x.id===id);
+const faltando = () => S.itens.filter(i=>i.falta);
+function sugerirEmoji(nome){
+  const n = norm(nome);
+  for(const p of n.split(/\s+/)){ if(DICA[p]) return DICA[p]; }
+  for(const k in DICA){ if(n.includes(k)) return DICA[k]; }
+  const parecido = S.itens.find(i=>norm(i.nome).split(' ')[0]===n.split(' ')[0]);
+  return parecido ? parecido.ic : '🛒';
+}
+
+/* ---------- guia ---------- */
+const naOrg = (qual, sel) => () => S.org!==qual ? `[data-orgaba="${qual}"]` : sel;
+const PASSOS = [
+ {t:'Acabou o café', d:'São mais de 100 produtos, então tem atalho: toque em <b>☕ Café da manhã</b> na barra de cima para pular até lá, e depois em <b>Café</b>.', aba:'casa', alvo:'[data-pula="cafe"], [data-id="cafe"]', ok:e=>e==='falta:cafe'},
+ {t:'Segurar para editar', d:'Segure o dedo no botão <b>Banana prata</b> (no Mac, segure o clique). Abre a janela de editar. Toque na figurinha e, no campo de cima, use o <b>teclado de emojis do iPhone</b> para escolher qualquer uma. Depois toque em <b>Salvar</b>.', aba:'casa', alvo:'[data-pula="fruteira"], [data-id="banana"]', ok:e=>e==='editar'},
+ {t:'Achar escrevendo', d:'Escreva <b>maizena</b> no campo. Os botões vão se filtrando enquanto você escreve. Como ela ainda não existe, toque em <b>Pôr na lista</b>: a figurinha já vem sugerida, é só escolher onde ela fica em casa e no mercado.', aba:'casa', alvo:'#busca', ok:e=>e==='novo'},
+ {t:'Do celular dela', d:'A Ana viu no banheiro que acabou o papel. Toque no botão abaixo e veja aparecer no seu celular, sem ninguém mandar mensagem.', botao:'Simular: Ana marca no celular dela', ok:e=>e==='remoto'},
+ {t:'O nome do seu corredor', d:'Abra <b>Organizar</b>. No seu mercado o corredor é "Arroz, feijão e milho": toque no nome <b>Arroz, feijão, massas e óleo ✎</b> e troque.', aba:'organizar', alvo:naOrg('corredores','[data-ren="cor:arroz"]'), ok:e=>e==='renomear'},
+ {t:'A ordem dos corredores', d:'No seu mercado o Açougue fica no fundo. Desça o <b>Açougue</b> com a seta ▼ (quantas vezes quiser). O número muda sozinho.', aba:'organizar', alvo:naOrg('corredores','[data-down="cor:acougue"]'), ok:e=>e==='ordem'},
+ {t:'Categorias da casa', d:'Toque em <b>Categorias da casa</b> e depois na figurinha de uma delas para trocar. Dá também para criar uma categoria nova no fim da lista.', aba:'organizar', alvo:naOrg('categorias','[data-emo^="cat:"]'), ok:e=>e==='emoji'},
+ {t:'Chegou no mercado', d:'Abra <b>Mercado</b> e toque em <b>Estou no mercado</b>. A lista aparece na ordem dos corredores, e a Ana vê a bolinha verde em você.', aba:'mercado', alvo:'#comecar', ok:e=>e==='comecar'},
+ {t:'Peguei, peguei, peguei', d:'Toque em 3 itens conforme for pegando. Fique de olho: no meio das compras a Ana vai lembrar de mais uma coisa.', aba:'mercado', alvo:'.linha.pick', ok:()=>S.itens.filter(i=>i.carrinho).length>=3},
+ {t:'Não tinha na prateleira', d:'Toque em <b>não tinha</b> em algum item. Ele não some: continua na lista para a próxima compra.', aba:'mercado', alvo:'[data-nt]', ok:e=>e==='sem'},
+ {t:'Fim das compras', d:'Toque em <b>Terminar compras</b>. O que você pegou volta a ser "tem em casa".', aba:'mercado', alvo:'#terminar', ok:e=>e==='terminar'}
+];
+function checar(e){ const p = PASSOS[S.passo]; if(p && p.ok(e)) S.passo++; }
+function renderGuia(){
+  const p = PASSOS[S.passo];
+  $('passo').innerHTML = p
+    ? `<div class="n">Passo ${S.passo+1} de ${PASSOS.length}</div><h2>${p.t}</h2><p>${p.d}</p>`+(p.botao?`<button class="btn-guia" id="simular">${p.botao}</button>`:'')
+    : `<div class="n">Pronto</div><h2>Você viu tudo</h2><p>Pode continuar mexendo à vontade: criar corredor, apagar categoria, segurar o dedo num produto para editar ou apagar. E o "Aprender sozinho" fica no fim de Organizar → Corredores, desligado.</p><button class="btn-guia" id="recomecar">Recomeçar o passo a passo</button>`;
+  $('passos').innerHTML = PASSOS.map((q,i)=>`<li class="${i<S.passo?'feito':i===S.passo?'agora':''}"><span class="b">${i<S.passo?'✓':i+1}</span>${q.t}</li>`).join('');
+}
+function aplicarAlvo(){
+  document.querySelectorAll('.alvo').forEach(el=>el.classList.remove('alvo'));
+  const p = PASSOS[S.passo]; if(!p) return;
+  if(p.botao){ $('simular')?.classList.add('alvo'); return; }
+  if(p.aba && S.tab!==p.aba){ document.querySelector(`[data-tab="${p.aba}"]`).classList.add('alvo'); return; }
+  const sel = typeof p.alvo==='function' ? p.alvo() : p.alvo;
+  document.querySelectorAll(sel).forEach(el=>el.classList.add('alvo'));
+}
+
+/* ---------- aviso ---------- */
+let tAviso;
+function aviso(tx, rotulo, acao){
+  $('avisoTx').textContent = tx;
+  const b = $('avisoBt'); b.textContent = rotulo||''; b.style.display = rotulo?'':'none';
+  b.onclick = ()=>{ acao&&acao(); $('aviso').classList.remove('on'); render(); };
+  $('aviso').classList.add('on');
+  clearTimeout(tAviso); tAviso = setTimeout(()=>$('aviso').classList.remove('on'), 3600);
+}
+
+/* ---------- Em casa ---------- */
+function tile(i){
+  return `<button class="item ${i.falta?'falta':''}" data-id="${i.id}" aria-pressed="${i.falta}"><span class="e">${i.ic}</span><span class="nm">${esc(i.nome)}</span><span class="tag">${i.falta?`${esc(i.quem)} · ${esc(i.hora)}`:''}</span></button>`;
+}
+function telaCasa(){
+  const n = faltando().length;
+  $('subtitulo').textContent = n ? `${n} ${n===1?'coisa':'coisas'} na lista dos dois` : 'Nada faltando';
+  $('conteudo').innerHTML =
+    `<form class="busca" id="formBusca"><input id="busca" autocomplete="off" placeholder="Acabou o quê?" aria-label="Acabou o quê?" value="${esc(S.filtro)}"><button>Pôr na lista</button></form>
+     <div class="pulos" id="pulos">${S.categorias.map(c=>`<button class="pulo" data-pula="${c.id}">${c.ic} ${esc(c.nome)}</button>`).join('')}</div>
+     <div id="gradeCasa"></div>`;
+  $('fixo').innerHTML='';
+  $('busca').oninput = e=>{ S.filtro = e.target.value; renderGrade(); aplicarAlvo(); };
+  $('formBusca').onsubmit = e=>{ e.preventDefault(); enviarBusca(); };
+  renderGrade();
+}
+function renderGrade(){
+  const f = norm(S.filtro);
+  $('pulos').style.display = f ? 'none' : '';
+  let h = '';
+  if(f){
+    const achados = S.itens.filter(i=>norm(i.nome).includes(f));
+    const exato = achados.some(i=>norm(i.nome)===f);
+    h = `<div class="grade">${achados.map(tile).join('')}${exato?'':`<button class="item criar" data-criar="1"><span class="e">${sugerirEmoji(S.filtro)}</span><span class="nm">Criar “${esc(S.filtro.trim())}”</span><span class="tag">produto novo</span></button>`}</div>`;
+  } else {
+    if(!S.sugestaoFeita && !item('sabaoliq').falta){
+      h += `<div class="sugestao"><div class="tx"><span class="pill">depois</span> <b>Sabão líquido pode estar acabando</b><br>Comprado há 32 dias. Costuma durar uns 30.</div><button data-sug="sabaoliq">Pôr na lista</button></div>`;
+    }
+    const grupos = S.categorias.map(c=>({id:c.id, nome:`${c.ic} ${esc(c.nome)}`, its:S.itens.filter(i=>i.cat===c.id)}));
+    grupos.push({id:'semcat', nome:'Sem categoria', its:S.itens.filter(i=>!i.cat || !achar('cat',i.cat))});
+    for(const g of grupos){ if(!g.its.length) continue;
+      h += `<div class="grupo" id="g-${g.id}"><h3>${g.nome}</h3><div class="grade">${g.its.map(tile).join('')}</div></div>`; }
+  }
+  $('gradeCasa').innerHTML = h;
+}
+function enviarBusca(){
+  const txt = S.filtro.trim();
+  if(!txt){ aviso('Escreva o que acabou. Ex.: maizena'); return; }
+  const achou = S.itens.find(i=>norm(i.nome)===norm(txt));
+  if(achou){ S.filtro=''; if(!achou.falta) tocarItem(achou.id); else { aviso(`${achou.nome} já está na lista`); render(); } return; }
+  const nome = txt.charAt(0).toUpperCase()+txt.slice(1);
+  itemSheet({nome, ic:sugerirEmoji(nome), cat:null, cor:null}, true);
+}
+
+/* ---------- Mercado ---------- */
+function linhaMercado(i, modo){
+  const sub = i.chegou ? `<small class="novo">acabou de entrar · ${esc(i.quem)}</small>` : '';
+  if(modo==='prev') return `<div class="linha prev"><span class="ck"></span><span class="e">${i.ic}</span><span class="tx"><b>${esc(i.nome)}</b></span></div>`;
+  if(modo==='carrinho') return `<button class="linha no-carrinho" data-pick="${i.id}"><span class="ck">✓</span><span class="e">${i.ic}</span><span class="tx"><b>${esc(i.nome)}</b><small>toque para desfazer</small></span></button>`;
+  if(modo==='sem') return `<button class="linha sem" data-volta="${i.id}"><span class="ck"></span><span class="e">${i.ic}</span><span class="tx"><b>${esc(i.nome)}</b><small>fica para a próxima · toque se achou</small></span></button>`;
+  return `<div class="linha pick ${i.chegou?'chegou':''}" data-pick="${i.id}" role="button" tabindex="0"><span class="ck"></span><span class="e">${i.ic}</span><span class="tx"><b>${esc(i.nome)}</b>${sub}</span><button class="nt" data-nt="${i.id}">não tinha</button></div>`;
+}
+function telaMercado(){
+  const lista = faltando();
+  const pend = lista.filter(i=>!i.carrinho && !i.sem);
+  const grupos = S.corredores.map((c,k)=>({titulo:`<span class="num">${k+1}</span><span><small>Corredor ${k+1}</small>${c.ic} ${esc(c.nome)}</span>`, its:pend.filter(i=>i.cor===c.id)}));
+  grupos.push({titulo:'<span class="num">?</span><span>Sem corredor</span>', its:pend.filter(i=>!i.cor || !achar('cor',i.cor))});
+  const com = grupos.filter(g=>g.its.length);
+  let h = '';
+  if(!S.comprando){
+    $('subtitulo').textContent = 'Na ordem dos corredores';
+    h += `<div class="resumo"><div class="grande">${lista.length} itens em ${com.length} corredores</div><button id="comecar">Estou no mercado</button></div>`;
+  } else {
+    const feitos = lista.filter(i=>i.carrinho).length;
+    $('subtitulo').textContent = `${feitos} de ${lista.length} no carrinho`;
+    h += `<div class="aovivo"><i></i>A Ana vê na hora o que você pega</div><div class="barra"><i style="width:${lista.length?feitos/lista.length*100:0}%"></i></div>`;
+  }
+  com.forEach(g=>{ h += `<div class="secao"><h3>${g.titulo}</h3><div class="linhas">${g.its.map(i=>linhaMercado(i, S.comprando?'pick':'prev')).join('')}</div></div>`; });
+  if(S.comprando){
+    const car = lista.filter(i=>i.carrinho), sem = lista.filter(i=>i.sem);
+    if(!pend.length) h += `<p class="explica" style="text-align:center">Tudo pego! Toque em Terminar compras.</p>`;
+    if(car.length) h += `<div><div class="rotulo-grupo">No carrinho (${car.length})</div><div class="linhas">${car.map(i=>linhaMercado(i,'carrinho')).join('')}</div></div>`;
+    if(sem.length) h += `<div><div class="rotulo-grupo">Não tinha (${sem.length})</div><div class="linhas">${sem.map(i=>linhaMercado(i,'sem')).join('')}</div></div>`;
+    h += `<div style="height:70px"></div>`;
+    $('fixo').innerHTML = `<div class="fixo"><button id="terminar">Terminar compras</button></div>`;
+  } else $('fixo').innerHTML='';
+  $('conteudo').innerHTML = h;
+}
+
+/* ---------- Organizar ---------- */
+function telaOrganizar(){
+  const tipo = S.org==='corredores' ? 'cor' : 'cat';
+  const L = listaDe(tipo);
+  $('subtitulo').textContent = tipo==='cor' ? 'Do jeito do seu mercado' : 'Do jeito da sua casa';
+  let h = `<div class="segmento"><button data-orgaba="corredores" class="${tipo==='cor'?'on':''}">Corredores do mercado</button><button data-orgaba="categorias" class="${tipo==='cat'?'on':''}">Categorias da casa</button></div>`;
+  h += `<p class="explica">${tipo==='cor'
+    ? 'Na ordem em que vocês andam no mercado. Toque no nome para renomear e na figurinha para trocar.'
+    : 'Como os botões aparecem na tela Em casa. Toque no nome para renomear e na figurinha para trocar.'}</p><div class="linhas">`;
+  L.forEach((x,k)=>{
+    const its = S.itens.filter(i=>(tipo==='cor'?i.cor:i.cat)===x.id);
+    const chave = `${tipo}:${x.id}`, aberto = S.aberta===chave;
+    h += `<div class="cor ${S.mexeu===chave?'mexeu':''}"><div class="l1">
+      ${tipo==='cor'?`<span class="num">${k+1}</span>`:''}
+      <button class="emo" data-emo="${chave}" aria-label="Trocar figurinha">${x.ic}</button>
+      <span class="nm"><button class="ren" data-ren="${chave}">${esc(x.nome)} <i>✎</i></button><button class="ver" data-abre="${chave}">${its.length} itens · ${aberto?'fechar':'ver'}</button></span>
+      <button class="seta" data-up="${chave}" ${k===0?'disabled':''} aria-label="Subir">▲</button>
+      <button class="seta" data-down="${chave}" ${k===L.length-1?'disabled':''} aria-label="Descer">▼</button></div>`;
+    if(aberto) h += `<div class="chips">${its.map(i=>`<button class="chip" data-edit="${i.id}">${i.ic} ${esc(i.nome)}</button>`).join('')||'<span class="explica">Nenhum item aqui.</span>'}</div>
+      <span class="explica" style="font-size:13px">Toque num produto para mudar figurinha, nome, categoria ou corredor.</span>
+      <button class="link" data-del="${chave}">Apagar ${tipo==='cor'?'este corredor':'esta categoria'}</button>`;
+    h += `</div>`;
+  });
+  h += `</div><button class="novo" data-novo="${tipo}">+ ${tipo==='cor'?'Novo corredor':'Nova categoria'}</button>`;
+  if(tipo==='cor') h += `<div class="opcao"><input type="checkbox" id="aprender" ${S.aprender?'checked':''}><label for="aprender"><b>Aprender a ordem sozinho</b> (desligado)<br>Se ligar, a ordem em que você pega as coisas vira a ordem dos corredores. Deixe desligado quando vocês se dividem no mercado.</label></div>`;
+  $('conteudo').innerHTML = h; $('fixo').innerHTML='';
+  if($('aprender')) $('aprender').onchange = e=>{ S.aprender = e.target.checked; };
+}
+
+const TITULOS = {casa:'Em casa', mercado:'Mercado', organizar:'Organizar'};
+function render(){
+  $('titulo').textContent = TITULOS[S.tab];
+  document.querySelectorAll('[data-tab]').forEach(b=>b.classList.toggle('on', b.dataset.tab===S.tab));
+  const n = faltando().length; $('badge').textContent = n; $('badge').style.display = n?'':'none';
+  $('avV').classList.toggle('mercado', S.comprando);
+  const topo = $('conteudo').scrollTop;
+  ({casa:telaCasa, mercado:telaMercado, organizar:telaOrganizar})[S.tab]();
+  $('conteudo').scrollTop = topo;
+  renderGuia(); aplicarAlvo();
+}
+
+/* ---------- folhas (janelas de baixo) ---------- */
+function folha(html, liga){
+  $('folha').innerHTML = `<div class="veu" id="veu"><div class="folha">${html}</div></div>`;
+  const aberta = Date.now();
+  $('veu').onclick = e=>{ if(e.target.id==='veu' && Date.now()-aberta>600) fecharFolha(); };
+  liga && liga();
+}
+function fecharFolha(){ $('folha').innerHTML=''; }
+function escolherEmoji(atual, cb){
+  folha(`<h2>Escolha a figurinha</h2><div class="teclado"><input type="text" id="emoTec" enterkeyhint="done" placeholder="${atual}" autocomplete="off" aria-label="Figurinha pelo teclado"><span><b>Qualquer figurinha:</b> toque aqui e use o teclado de emojis do iPhone (botão 😀 ou 🌐).<small id="emoErro"></small></span></div><div class="emojis">${EMOJIS.map(([t,es])=>`<h3>${t}</h3><div class="g">${es.map(e=>`<button data-e="${e}" class="${e===atual?'sel':''}">${e}</button>`).join('')}</div>`).join('')}</div><button class="cancela" id="emoVolta">Voltar</button>`,
+    ()=>{ document.querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>cb(b.dataset.e)); $('emoVolta').onclick=()=>cb(atual);
+      $('emoTec').oninput = e=>{ const v=e.target.value; const em=primeiroEmoji(v);
+        if(em) cb(em); else $('emoErro').textContent = v.trim() ? 'Isso não é uma figurinha. Use o teclado de emojis.' : ''; }; });
+}
+function primeiroEmoji(txt){
+  const partes = (typeof Intl!=='undefined' && Intl.Segmenter) ? [...new Intl.Segmenter('pt',{granularity:'grapheme'}).segment(txt)].map(s=>s.segment) : [...txt];
+  return partes.find(g=>/\p{Extended_Pictographic}|\p{Regional_Indicator}/u.test(g)) || null;
+}
+function textoSheet(titulo, valor, rotulo, cb){
+  folha(`<h2>${titulo}</h2><input type="text" id="fTexto" value="${esc(valor)}" autocomplete="off"><button class="ok" id="fOk">${rotulo}</button><button class="cancela" id="fCancela">Cancelar</button>`, ()=>{
+    const ir = ()=>{ const v = $('fTexto').value.trim(); if(!v) return; fecharFolha(); cb(v); };
+    $('fOk').onclick = ir; $('fTexto').onkeydown = e=>{ if(e.key==='Enter') ir(); };
+    $('fCancela').onclick = fecharFolha; $('fTexto').focus(); $('fTexto').select();
+  });
+}
+function confirmar(titulo, texto, rotulo, cb){
+  folha(`<h2>${titulo}</h2><p>${texto}</p><button class="ok perigo" id="fSim">${rotulo}</button><button class="cancela" id="fNao">Cancelar</button>`,
+    ()=>{ $('fSim').onclick=()=>{ fecharFolha(); cb(); }; $('fNao').onclick=fecharFolha; });
+}
+function itemSheet(d, novo){
+  const chips = (tipo, atual) => listaDe(tipo).map(x=>`<button class="chip ${x.id===atual?'sel':''}" data-f${tipo}="${x.id}">${x.ic} ${esc(x.nome)}</button>`).join('');
+  folha(`<h2>${novo?'Produto novo':'Editar produto'}</h2>
+    <div class="campo-item"><button class="emo" id="fEmo" aria-label="Trocar figurinha">${d.ic}</button><input type="text" id="fNome" value="${esc(d.nome)}" aria-label="Nome"></div>
+    <div class="rot">Onde fica em casa?</div><div class="chips">${chips('cat', d.cat)}</div>
+    <div class="rot">Em que corredor do mercado?</div><div class="chips">${chips('cor', d.cor)}</div>
+    <button class="ok" id="fSalvar">${novo?'Salvar e pôr na lista':'Salvar'}</button>
+    ${novo?'<button class="cancela" id="fCancela">Cancelar</button>':'<button class="link" id="fApagar">Apagar este produto</button>'}`, ()=>{
+    const pega = ()=>{ d.nome = $('fNome').value.trim() || d.nome; };
+    $('fEmo').onclick = ()=>{ pega(); escolherEmoji(d.ic, e=>{ d.ic=e; itemSheet(d, novo); }); };
+    document.querySelectorAll('[data-fcat]').forEach(b=>b.onclick=()=>{ pega(); d.cat=b.dataset.fcat; itemSheet(d, novo); });
+    document.querySelectorAll('[data-fcor]').forEach(b=>b.onclick=()=>{ pega(); d.cor=b.dataset.fcor; itemSheet(d, novo); });
+    $('fSalvar').onclick = ()=>{
+      pega(); fecharFolha();
+      if(novo){
+        const i = {id:'n'+Date.now(), nome:d.nome, ic:d.ic, cat:d.cat, cor:d.cor, falta:false, carrinho:false, sem:false, chegou:false};
+        S.itens.push(i); marcar(i,'Victor','agora'); S.filtro='';
+        aviso(`${i.nome} entrou na lista e virou botão`); checar('novo'); render();
+        setTimeout(()=>document.querySelector(`[data-id="${i.id}"]`)?.scrollIntoView({behavior:'smooth',block:'center'}),50);
+      } else {
+        Object.assign(item(d.id), {nome:d.nome, ic:d.ic, cat:d.cat, cor:d.cor});
+        aviso(`${d.nome} salvo`); checar('editar'); render();
+      }
+    };
+    if(novo) $('fCancela').onclick = fecharFolha;
+    else $('fApagar').onclick = ()=>confirmar(`Apagar ${esc(d.nome)}?`, 'Ele some dos botões e da lista. Dá para criar de novo depois.', 'Apagar', ()=>{
+      S.itens = S.itens.filter(i=>i.id!==d.id); aviso(`${d.nome} apagado`); render(); });
+  });
+}
+
+/* ---------- ações ---------- */
+function marcar(i, quem, hora){ i.falta=true; i.quem=quem; i.hora=hora; i.carrinho=false; i.sem=false; }
+function tocarItem(id){
+  const i = item(id);
+  if(i.falta){
+    i.falta=false; i.carrinho=false; i.sem=false;
+    aviso(`${i.nome} saiu da lista`, 'Desfazer', ()=>marcar(i,'Victor','agora'));
+  } else {
+    marcar(i,'Victor','agora');
+    aviso(`${i.nome} entrou na lista`, 'Desfazer', ()=>{ i.falta=false; });
+    checar('falta:'+id);
+  }
+  render();
+}
+function mover(chave, dir){
+  const [tipo,id] = chave.split(':'); const L = listaDe(tipo);
+  const k = L.findIndex(x=>x.id===id), j = k+dir;
+  if(j<0||j>=L.length) return;
+  [L[k],L[j]] = [L[j],L[k]];
+  S.mexeu = chave; checar('ordem'); render();
+  setTimeout(()=>{ if(S.mexeu===chave){ S.mexeu=null; document.querySelectorAll('.cor.mexeu').forEach(e=>e.classList.remove('mexeu')); } }, 700);
+}
+let tAna;
+function comecar(){
+  S.comprando = true; S.picks = []; checar('comecar'); render();
+  aviso('A Ana vê que você está no mercado');
+  clearTimeout(tAna);
+  tAna = setTimeout(()=>{
+    if(!S.comprando) return;
+    const alvo = ['requeijao','iogurte','queijo','manteiga'].map(item).find(i=>i && !i.falta);
+    if(!alvo) return;
+    marcar(alvo,'Ana','agora'); alvo.chegou = true;
+    aviso(`A Ana lembrou: ${alvo.nome}`); render();
+    setTimeout(()=>{ alvo.chegou=false; }, 1700);
+  }, 3000);
+}
+function pegar(id){
+  const i = item(id);
+  i.carrinho = !i.carrinho; i.sem = false; i.chegou = false;
+  if(i.carrinho && i.cor && !S.picks.includes(i.cor)) S.picks.push(i.cor);
+  checar('pegar'); render();
+}
+function semEstoque(id){ const i=item(id); i.sem=true; i.carrinho=false; checar('sem'); render(); }
+function terminar(){
+  const lista = faltando();
+  const car = lista.filter(i=>i.carrinho), sem = lista.filter(i=>i.sem), resto = lista.filter(i=>!i.carrinho && !i.sem);
+  car.forEach(i=>{ i.falta=false; i.carrinho=false; });
+  sem.forEach(i=>{ i.sem=false; });
+  let aprendeu = '';
+  if(S.aprender && S.picks.length>=2){
+    const antes = S.corredores.map(c=>c.id).join();
+    const posicoes = S.corredores.map((c,k)=>S.picks.includes(c.id)?k:-1).filter(k=>k>=0);
+    const novo = S.corredores.slice();
+    posicoes.forEach((pos,n)=>{ novo[pos] = achar('cor',S.picks[n]); });
+    S.corredores = novo;
+    if(novo.map(c=>c.id).join()!==antes) aprendeu = `<p><b>Aprendi a ordem:</b> ${S.picks.map(id=>esc(achar('cor',id).nome)).join(' → ')}.</p>`;
+  }
+  S.comprando = false; clearTimeout(tAna);
+  checar('terminar');
+  folha(`<h2>Compras feitas</h2>
+    <p>✓ <b>${car.length} ${car.length===1?'item voltou':'itens voltaram'}</b> para "tem em casa".</p>
+    ${sem.length?`<p>↻ <b>${sem.map(i=>esc(i.nome)).join(', ')}</b> não tinha: continua na lista.</p>`:''}
+    ${resto.length?`<p>• ${resto.length} ${resto.length===1?'item ficou':'itens ficaram'} sem pegar e continuam na lista.</p>`:''}
+    ${aprendeu}<button class="ok" id="okFim">Ok</button>`, ()=>$('okFim').onclick=()=>{ fecharFolha(); S.tab='casa'; render(); });
+  render();
+}
+
+/* ---------- cliques ---------- */
+document.addEventListener('click', e=>{
+  if(e.target.closest('#folha')) return;
+  const t = e.target.closest('button,[data-pick]'); if(!t) return;
+  const d = t.dataset;
+  if(d.tab){ S.tab = d.tab; S.aberta=null; render(); $('conteudo').scrollTop=0; aplicarAlvo(); return; }
+  if(d.id){ if(segurou){ segurou=false; return; } tocarItem(d.id); return; }
+  if(d.pula){ $('g-'+d.pula)?.scrollIntoView({behavior:'smooth',block:'start'}); return; }
+  if(d.criar){ enviarBusca(); return; }
+  if(d.sug){ S.sugestaoFeita=true; marcar(item(d.sug),'Victor','agora'); aviso('Sabão líquido entrou na lista'); render(); return; }
+  if(d.nt){ semEstoque(d.nt); return; }
+  if(d.pick){ pegar(d.pick); return; }
+  if(d.volta){ item(d.volta).sem=false; render(); return; }
+  if(d.orgaba){ S.org = d.orgaba; S.aberta=null; render(); return; }
+  if(d.up){ mover(d.up,-1); return; }
+  if(d.down){ mover(d.down,1); return; }
+  if(d.abre){ S.aberta = S.aberta===d.abre?null:d.abre; render(); return; }
+  if(d.edit){ const i=item(d.edit); itemSheet({...i}, false); return; }
+  if(d.emo){ const [tipo,id]=d.emo.split(':'); const x=achar(tipo,id);
+    escolherEmoji(x.ic, em=>{ fecharFolha(); if(em!==x.ic){ x.ic=em; checar('emoji'); } render(); }); return; }
+  if(d.ren){ const [tipo,id]=d.ren.split(':'); const x=achar(tipo,id);
+    textoSheet(tipo==='cor'?'Nome do corredor':'Nome da categoria', x.nome, 'Salvar', v=>{ x.nome=v; checar('renomear'); aviso('Nome trocado'); render(); }); return; }
+  if(d.del){ const [tipo,id]=d.del.split(':'); const x=achar(tipo,id); const campo = tipo==='cor'?'cor':'cat';
+    const n = S.itens.filter(i=>i[campo]===id).length;
+    confirmar(`Apagar ${esc(x.nome)}?`, n?`Os ${n} produtos daqui vão para "${tipo==='cor'?'Sem corredor':'Sem categoria'}". Nenhum produto some.`:'Não tem nenhum produto aqui.', 'Apagar', ()=>{
+      S.itens.forEach(i=>{ if(i[campo]===id) i[campo]=null; });
+      if(tipo==='cor') S.corredores = S.corredores.filter(c=>c.id!==id); else S.categorias = S.categorias.filter(c=>c.id!==id);
+      S.aberta=null; aviso(`${x.nome} apagado`); render(); }); return; }
+  if(d.novo){ const tipo=d.novo;
+    textoSheet(tipo==='cor'?'Novo corredor':'Nova categoria', '', 'Criar', v=>{
+      const x = {id:'x'+Date.now(), nome:v, ic:sugerirEmoji(v)};
+      listaDe(tipo).push(x); aviso(`${v} criado. Toque na figurinha para trocar.`); render();
+      setTimeout(()=>{ const c=$('conteudo'); c.scrollTop=c.scrollHeight; },30); }); return; }
+  if(t.id==='comecar'){ comecar(); return; }
+  if(t.id==='terminar'){ terminar(); return; }
+  if(t.id==='simular'){
+    marcar(item('papel'),'Ana','agora'); S.filtro=''; if(S.tab!=='casa') S.tab='casa';
+    aviso('A Ana marcou: Papel higiênico'); checar('remoto'); render();
+    setTimeout(()=>document.querySelector('[data-id="papel"]')?.scrollIntoView({behavior:'smooth',block:'center'}),50);
+    return;
+  }
+  if(t.id==='recomecar'){ fecharFolha(); clearTimeout(tAna); reset(); render(); return; }
+});
+/* segurar o dedo num botão de Em casa = editar */
+let tSeg=null, segurou=false, x0=0, y0=0;
+document.addEventListener('pointerdown', e=>{
+  const t = e.target.closest('.item[data-id]'); if(!t) return;
+  segurou=false; x0=e.clientX; y0=e.clientY; t.classList.add('segurando');
+  tSeg = setTimeout(()=>{ tSeg=null; segurou=true; t.classList.remove('segurando'); navigator.vibrate?.(15); itemSheet({...item(t.dataset.id)}, false); }, 550);
+});
+function soltar(){ clearTimeout(tSeg); tSeg=null; document.querySelectorAll('.segurando').forEach(el=>el.classList.remove('segurando')); }
+document.addEventListener('pointerup', soltar);
+document.addEventListener('pointercancel', soltar);
+document.addEventListener('pointermove', e=>{ if(tSeg && Math.hypot(e.clientX-x0, e.clientY-y0)>10) soltar(); });
+document.addEventListener('contextmenu', e=>{ if(e.target.closest('.item')) e.preventDefault(); });
+document.addEventListener('keydown', e=>{
+  const t = e.target.closest?.('[data-pick]');
+  if(t && (e.key==='Enter'||e.key===' ') && !e.target.closest('button')){ e.preventDefault(); pegar(t.dataset.pick); }
+});
+
+reset(); render();
+</script>
+</body>
+</html>
