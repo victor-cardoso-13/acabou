@@ -2,7 +2,7 @@
  * O que a tela sabe agora: quem sou eu, a casa (cópia local, atualizada ao vivo pela nuvem),
  * a aba aberta... e `fazer()`, o único caminho de uma ação até a nuvem.
  */
-import { aplicar, inverso, lerCasa } from '../motor/casa.ts';
+import { aplicar, inverso, lerCasa, registrarNome } from '../motor/casa.ts';
 import type { Casa, Escritas, TipoLista } from '../motor/tipos.ts';
 import { acabouDeEntrar, inicioDasCompras } from '../motor/casa.ts';
 
@@ -29,6 +29,8 @@ export const S = {
   repo: null as Repo | null,
   /** convidar alguém (só existe com a nuvem ligada) */
   convidar: null as ((email: string) => Promise<string>) | null,
+  /** guarda o nome na conta (só com a nuvem ligada) */
+  guardarNome: null as ((nome: string) => Promise<void>) | null,
   /** texto de erro simples para mostrar na tela */
   mensagemErro: (_e: unknown): string => 'Algo deu errado. Tente de novo daqui a pouco.',
 };
@@ -79,6 +81,14 @@ export function receberCasa(dados: unknown): void {
   }
   S.casa = nova;
   render();
+}
+
+/** Muda o meu nome: na conta, na casa (círculo do outro celular) e na tela. */
+export function mudarMeuNome(nome: string): void {
+  if (!S.eu || !S.casa) return;
+  S.eu = { ...S.eu, nome };
+  void S.guardarNome?.(nome).catch(() => {});
+  fazer(registrarNome(S.casa, S.eu.uid, nome), 'Nome salvo');
 }
 
 export const NOMES_DAS_ABAS: Record<Aba, string> = { casa: 'Em casa', mercado: 'Mercado', organizar: 'Organizar' };

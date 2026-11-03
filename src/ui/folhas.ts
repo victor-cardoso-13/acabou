@@ -6,7 +6,7 @@ import {
 import { EMOJIS, primeiroEmoji, sugerirEmoji } from '../motor/emoji.ts';
 import { LIMITES, type TipoLista } from '../motor/tipos.ts';
 import type { ResumoCompras } from '../motor/casa.ts';
-import { casa, fazer, meuNome, meuUid, S } from './estado.ts';
+import { casa, fazer, meuNome, meuUid, mudarMeuNome, S } from './estado.ts';
 import { escapar as e } from './seguranca.ts';
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -145,6 +145,11 @@ export function apagarListaSheet(tipo: TipoLista, id: string): void {
   });
 }
 
+/** Primeira vez sem nome (conta antiga dos jogos): pergunta como quer ser chamado(a). */
+export function perguntarNome(): void {
+  textoSheet('Como você quer ser chamado(a)?', '', 'Salvar', v => mudarMeuNome(v));
+}
+
 /* ---------- fim das compras ---------- */
 export function resumoSheet(r: ResumoCompras, depois: () => void): void {
   const p = r.pegos.length, s = r.semEstoque.length, f = r.restaram.length;
@@ -175,10 +180,20 @@ export function casaSheet(sair: () => void, convite?: { codigo: string; email: s
        <div class="rot">Convidar quem mora com você</div>
        <form class="linha-form" id="fMembro"><input class="campo" type="email" id="fEmail" placeholder="e-mail da pessoa" autocomplete="off" autocapitalize="none" maxlength="${LIMITES.email}" aria-label="E-mail da pessoa"><button class="ok">Gerar convite</button></form>
        <p class="explica" id="fMembroDica">A pessoa precisa ter conta no app (a dos jogos serve). O convite só funciona para o e-mail que você digitar aqui.</p>`;
-  folha(`<h2>Nossa casa</h2>${pessoas}${blocoConvite}
+  folha(`<h2>Nossa casa</h2>${pessoas}
+    <div class="rot">Seu nome</div>
+    <form class="linha-form" id="fNomeForm"><input class="campo" type="text" id="fMeuNome" value="${e(meuNome())}" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="Seu nome"><button class="ok">Salvar</button></form>
+    ${blocoConvite}
     <button class="link" id="fSair">Sair desta conta</button><button class="cancela" id="fFecha">Fechar</button>`, () => {
     $('fFecha').onclick = fecharFolha;
     $('fSair').onclick = () => { fecharFolha(); sair(); };
+    ($('fNomeForm') as HTMLFormElement).onsubmit = ev => {
+      ev.preventDefault();
+      const n = limparNome(($('fMeuNome') as HTMLInputElement).value);
+      if (!n) return;
+      mudarMeuNome(n);
+      casaSheet(sair, convite);
+    };
     const form = document.getElementById('fMembro') as HTMLFormElement | null;
     if (form) form.onsubmit = async ev => {
       ev.preventDefault();

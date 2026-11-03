@@ -1,9 +1,10 @@
 /** Liga o app à nuvem: conta, a casa ao vivo e a gravação. Só é carregado depois que a página abre. */
-import { nomeDoEmail, normalizarCodigo, registrarNome, casaInicial } from '../motor/casa.ts';
+import { normalizarCodigo, registrarNome, casaInicial } from '../motor/casa.ts';
 import { lerCasa } from '../motor/casa.ts';
 import { casaSumiu } from './app.ts';
 import { ligarSair } from './eventos.ts';
 import { avisar, fazer, receberCasa, render, S, type Eu } from './estado.ts';
+import { perguntarNome } from './folhas.ts';
 import { mostrarCarregando, mostrarLogin, mostrarSemCasa } from './entrada.ts';
 
 export async function iniciarNuvem(): Promise<void> {
@@ -18,6 +19,7 @@ export async function iniciarNuvem(): Promise<void> {
   }
   ligarSair(() => { void conta.sair(); });
   S.mensagemErro = conta.mensagemDeErro;
+  S.guardarNome = conta.trocarNome;
 
   let parar: (() => void) | null = null;
   let nomeRegistrado = false;
@@ -32,7 +34,7 @@ export async function iniciarNuvem(): Promise<void> {
       });
       return;
     }
-    const eu: Eu = { uid: u.uid, email: u.email, nome: u.nome || nomeDoEmail(u.email) };
+    const eu: Eu = { uid: u.uid, email: u.email, nome: u.nome };
     S.eu = eu;
     mostrarCarregando('Procurando a sua casa…');
     parar = casas.observarCasa(eu.email, c => {
@@ -52,8 +54,11 @@ export async function iniciarNuvem(): Promise<void> {
       receberCasa(c.dados);
       if (!nomeRegistrado && S.casa) {
         nomeRegistrado = true;
-        const e = registrarNome(lerCasa(c.dados), eu.uid, eu.nome);
-        if (Object.keys(e).length) fazer(e);
+        // nome: o da conta; senão o que já está salvo na casa; senão pergunta (nunca usa o começo do e-mail)
+        const salvo = S.casa.nomes[eu.uid];
+        if (!u.nome && salvo) S.eu = { ...eu, nome: salvo };
+        if (!u.nome && !salvo) { S.eu = { ...eu, nome: '' }; perguntarNome(); }
+        else { const e = registrarNome(lerCasa(c.dados), eu.uid, S.eu!.nome); if (Object.keys(e).length) fazer(e); }
       }
     }, err => {
       avisar(conta.mensagemDeErro(err));
