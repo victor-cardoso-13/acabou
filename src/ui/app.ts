@@ -1,6 +1,5 @@
 /** A casca do app (título, abas, avisos) e o desenho de cada aba. */
 import { inicioDasCompras } from '../motor/casa.ts';
-import { montarAviso } from './aviso.ts';
 import { ligarEventos } from './eventos.ts';
 import { ligarRender, NOMES_DAS_ABAS, S, type Aba } from './estado.ts';
 import { escapar as e } from './seguranca.ts';
@@ -20,9 +19,7 @@ export function montarCasca(): void {
       <button data-tab="casa"><span class="ic">🏠</span>Em casa</button>
       <button data-tab="mercado"><span class="ic">🛒</span>Mercado<span class="badge" id="badge"></span></button>
       <button data-tab="organizar"><span class="ic">🧭</span>Organizar</button>
-    </nav>
-    <div class="aviso" id="aviso" role="status"><span></span><button></button></div></div>`;
-  montarAviso($('aviso'));
+    </nav></div>`;
   montada = true;
 }
 
