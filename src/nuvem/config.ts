@@ -3,9 +3,9 @@
  * copie este arquivo igual para cada jogo novo).
  * Não é senha: só diz qual é o projeto. Quem protege os dados são as regras em firestore.rules.
  *
- * Onde fica cada coisa no banco:
- *   jogadores/{uid}                 → perfil do jogador
- *   jogadores/{uid}/jogos/{jogo}    → progresso de cada jogo ("miaudoku", "mexe-mexe", …)
+ * Onde fica cada coisa no banco (jogos e apps usam o mesmo projeto):
+ *   jogadores/{uid}/jogos/{jogo}    → progresso de cada jogo
+ *   casas/{casaId}                  → a casa do Acabou! (lista de mercado do casal), ver src/nuvem/casas.ts
  */
 export const firebaseConfig = {
   apiKey: 'AIzaSyBVcllIhxwtJ4Mt4FLKBhtG7Zdcy_TtTyw',
