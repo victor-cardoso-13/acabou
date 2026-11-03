@@ -1,0 +1,52 @@
+/* Fontes guardadas dentro do jogo (funcionam sem internet). Licença livre (OFL). */
+@import '@fontsource/fredoka/latin-600.css';
+@import '@fontsource/fredoka/latin-700.css';
+@import '@fontsource/nunito/latin-600.css';
+@import '@fontsource/nunito/latin-700.css';
+@import '@fontsource/nunito/latin-800.css';
+
+:root {
+  --tinta: #3b2f2a;
+  --creme: #fbf6ee;
+  --ambar: #e7a400;
+  --ambar-claro: #f3c969;
+  --titulo: 'Fredoka', 'Nunito', system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+/* iPhone/iPad na Tela de Início (iOS 26, bug WebKit 301108): com status-bar "black-translucent" +
+   viewport-fit=cover, a janela do app fica MENOR que a tela (pela altura da barra de status) e o WebKit
+   nem desenha conteúdo fixo ali: sobra uma faixa lisa embaixo. O iOS só dá a janela inteira se a página
+   for pelo menos tão alta quanto a tela. O min() com 100lvh evita rolagem onde o recuo do topo é 0
+   (WebKit 316008). Só vale no modo app. Não apague. */
+@media (display-mode: standalone) {
+  html { min-height: min(100lvh, calc(100% + env(safe-area-inset-top))); }
+}
+/* Fundo e #app FIXOS na tela inteira (não pinte o fundo no body nem use height: 100dvh no #app).
+   A cor do html é a do fim do degradê, para qualquer sobra sumir. */
+html { background-color: #f6eee2; }
+body::before {
+  content: ''; position: fixed; inset: 0; z-index: -1;
+  background: radial-gradient(circle at 50% 0%, #fffaf2, #f6eee2 70%);
+}
+body {
+  font-family: 'Nunito', -apple-system, system-ui, sans-serif; font-weight: 600;
+  color: var(--tinta);
+  user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+/* iPhone: sem zoom de dois toques em lugar nenhum (a grade bloqueia tudo, ver main.ts) */
+* { touch-action: manipulation; }
+#app {
+  position: fixed; inset: 0;
+  display: flex; flex-direction: column; align-items: center;
+  padding: max(14px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  gap: 10px;
+}
+button { font: inherit; color: inherit; border: 0; background: none; cursor: pointer; padding: 0; }
+svg.ic { fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+
+
+/* Botões e demais telas do jogo: acrescente abaixo. Identidade: creme + tinta + âmbar (a mesma do Miaudoku). */
+h1 { font-family: var(--titulo); font-weight: 700; margin: 0; }
