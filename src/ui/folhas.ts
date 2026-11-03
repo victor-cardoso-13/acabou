@@ -179,7 +179,7 @@ export function casaSheet(sair: () => void, convite?: { codigo: string; email: s
     : cheia ? '<p class="explica">A casa já tem 4 pessoas.</p>' : `
        <div class="rot">Convidar quem mora com você</div>
        <form class="linha-form" id="fMembro"><input class="campo" type="email" id="fEmail" placeholder="e-mail da pessoa" autocomplete="off" autocapitalize="none" maxlength="${LIMITES.email}" aria-label="E-mail da pessoa"><button class="ok">Gerar convite</button></form>
-       <p class="explica" id="fMembroDica">A pessoa precisa ter conta no app (a dos jogos serve). O convite só funciona para o e-mail que você digitar aqui.</p>`;
+       <p class="explica" id="fMembroDica">O convite só funciona para um usuário logado no aplicativo.</p>`;
   folha(`<h2>Nossa casa</h2>${pessoas}
     <div class="rot">Seu nome</div>
     <form class="linha-form" id="fNomeForm"><input class="campo" type="text" id="fMeuNome" value="${e(meuNome())}" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="Seu nome"><button class="ok ${nomeSalvo ? 'salvo' : ''}">${nomeSalvo ? 'Salvo ✓' : 'Salvar'}</button></form>
