@@ -164,7 +164,7 @@ export function resumoSheet(r: ResumoCompras, depois: () => void): void {
 }
 
 /* ---------- a casa: pessoas, convite e sair ---------- */
-export function casaSheet(sair: () => void, convite?: { codigo: string; email: string }): void {
+export function casaSheet(sair: () => void, convite?: { codigo: string; email: string }, nomeSalvo = false): void {
   const c = casa();
   const nomeDe = (email: string) => (email === S.eu?.email ? S.eu.nome : '');
   const pessoas = c.membros.map((m, k) =>
@@ -182,7 +182,8 @@ export function casaSheet(sair: () => void, convite?: { codigo: string; email: s
        <p class="explica" id="fMembroDica">A pessoa precisa ter conta no app (a dos jogos serve). O convite só funciona para o e-mail que você digitar aqui.</p>`;
   folha(`<h2>Nossa casa</h2>${pessoas}
     <div class="rot">Seu nome</div>
-    <form class="linha-form" id="fNomeForm"><input class="campo" type="text" id="fMeuNome" value="${e(meuNome())}" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="Seu nome"><button class="ok">Salvar</button></form>
+    <form class="linha-form" id="fNomeForm"><input class="campo" type="text" id="fMeuNome" value="${e(meuNome())}" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="Seu nome"><button class="ok ${nomeSalvo ? 'salvo' : ''}">${nomeSalvo ? 'Salvo ✓' : 'Salvar'}</button></form>
+    ${nomeSalvo ? '<p class="confirma" role="status">Pronto! Seu nome foi salvo e já aparece no celular da outra pessoa.</p>' : ''}
     ${blocoConvite}
     <button class="link" id="fSair">Sair desta conta</button><button class="cancela" id="fFecha">Fechar</button>`, () => {
     $('fFecha').onclick = fecharFolha;
@@ -192,7 +193,7 @@ export function casaSheet(sair: () => void, convite?: { codigo: string; email: s
       const n = limparNome(($('fMeuNome') as HTMLInputElement).value);
       if (!n) return;
       mudarMeuNome(n);
-      casaSheet(sair, convite);
+      casaSheet(sair, convite, true);
     };
     const form = document.getElementById('fMembro') as HTMLFormElement | null;
     if (form) form.onsubmit = async ev => {

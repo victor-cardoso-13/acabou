@@ -161,8 +161,8 @@ input { -webkit-user-select: text; user-select: text; font: inherit; color: var(
 .opcao label { line-height: 1.4; }
 
 /* Aviso curto e janelas de baixo ("folhas") */
-.aviso { position: absolute; left: 0; right: 0; bottom: 4px; background: var(--tinta); color: var(--papel); border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; font-weight: 700;
-  transform: translateY(20px); opacity: 0; pointer-events: none; transition: .25s; z-index: 5; }
+.aviso { position: fixed; /* no nível das janelas e acima delas (z-index 20), para nunca ficar escondido */ left: 0; right: 0; margin: 0 auto; width: calc(100% - 24px); max-width: 736px; bottom: max(14px, env(safe-area-inset-bottom)); background: var(--tinta); color: var(--papel); border-radius: 16px; padding: 12px 14px; display: flex; align-items: center; gap: 10px; font-weight: 700;
+  transform: translateY(20px); opacity: 0; pointer-events: none; transition: .25s; z-index: 20; }
 .aviso.on { transform: none; opacity: 1; pointer-events: auto; }
 .aviso span { flex: 1; min-width: 0; }
 .aviso button { color: var(--ambar); font-weight: 800; text-decoration: underline; padding: 8px; }
@@ -197,6 +197,8 @@ input { -webkit-user-select: text; user-select: text; font: inherit; color: var(
 .linha-form { display: flex; gap: 8px; }
 .linha-form .campo { flex: 1; width: auto; }
 .linha-form .ok { padding: 0 16px; }
+.folha .ok.salvo { background: var(--verde); }
+.confirma { color: var(--verde); font-weight: 800; }
 
 .codigo { font-family: var(--titulo); font-weight: 700; font-size: 34px; letter-spacing: .06em; text-align: center; background: #fff; border: 2px dashed var(--ambar); border-radius: 16px; padding: 14px 8px; -webkit-user-select: text; user-select: text; }
 
