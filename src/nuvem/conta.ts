@@ -24,10 +24,13 @@ export interface Usuario {
   nome: string;
 }
 
+/** Nome digitado ao criar a conta: vale já, antes de o Firebase terminar de gravá-lo na conta. */
+let nomeNovo = '';
+
 /** Avisa quando alguém entra ou sai (e logo ao abrir, com quem já estava dentro). */
 export function observarConta(fn: (u: Usuario | null) => void) {
   return onAuthStateChanged(auth, u => fn(u && !u.isAnonymous && u.email
-    ? { uid: u.uid, email: u.email.trim().toLowerCase(), nome: u.displayName ?? '' }
+    ? { uid: u.uid, email: u.email.trim().toLowerCase(), nome: u.displayName || nomeNovo }
     : null));
 }
 
@@ -36,8 +39,14 @@ export async function entrar(email: string, senha: string) {
 }
 
 export async function criarConta(email: string, senha: string, nome: string) {
+  nomeNovo = nome.trim().slice(0, 40);
   const cred = await createUserWithEmailAndPassword(auth, email.trim(), senha);
-  try { await updateProfile(cred.user, { displayName: nome.trim().slice(0, 40) }); } catch { /* o nome é só enfeite */ }
+  try { await updateProfile(cred.user, { displayName: nome.trim().slice(0, 40) }); } catch { /* o nome também fica salvo na casa */ }
+}
+
+/** Troca o nome da conta (aparece nos círculos e em "Ana · 7h15"). */
+export async function trocarNome(nome: string) {
+  if (auth.currentUser) await updateProfile(auth.currentUser, { displayName: nome.trim().slice(0, 40) });
 }
 
 export async function sair() {

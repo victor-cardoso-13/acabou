@@ -54,6 +54,14 @@ await V.p.click('#avs');
 ok('o convite gasto não aparece mais; a casa mostra as 2 pessoas', await espera(V.p, () => document.querySelectorAll('.pessoa').length === 2));
 await V.p.click('#fFecha');
 
+console.log('--- nome ---');
+await A.p.click('#avs'); await A.p.fill('#fMeuNome', 'Aninha'); await A.p.click('#fNomeForm .ok');
+ok('Ana troca o nome para "Aninha"; o círculo dela no celular do Victor vira A (title Aninha)', await espera(V.p, () => [...document.querySelectorAll('.avs .av')].some(a => a.title === 'Aninha')));
+await A.p.click('#fFecha');
+await A.p.click('[data-id="alho"]');
+ok('a marcação da Ana passa a dizer "Aninha"', await espera(V.p, () => document.querySelector('[data-id="alho"] .tag')?.textContent.startsWith('Aninha')));
+await A.p.click('[data-id="alho"]');
+
 console.log('--- tempo real ---');
 await V.p.click('[data-id="cafe"]');
 ok('Victor toca em Café; aparece marcado na tela da Ana com "Victor · agora"', await espera(A.p, () => document.querySelector('[data-id="cafe"]')?.classList.contains('falta') && document.querySelector('[data-id="cafe"] .tag')?.textContent.startsWith('Victor')));
