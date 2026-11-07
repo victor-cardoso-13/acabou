@@ -76,7 +76,31 @@ describe('migração para vários mercados', () => {
     const c = aplicar(lerCasa(quebrado), e);
     expect(c.mercados.shibata!.nome).toBe('Shibata');
     expect(c.mercados.shibata!.corredores.map(x => x.id)).toEqual(['horti', 'padaria']);
-    expect(migracao({ ...quebrado, mercados: { shibata: { ...(quebrado.mercados as any).shibata, nome: 'Shibata' } } })).toBeNull();
+    expect(Object.keys(migracao({ ...quebrado, mercados: { shibata: { ...(quebrado.mercados as any).shibata, nome: 'Shibata' } } })!).every(k => k.endsWith('.cor'))).toBe(true); // só falta converter o `cor` dos produtos
+  });
+  it('estrago do "copiar corredores" com `cor` em texto: o Shibata é refeito pelos corredores de mesmo nome do outro mercado', () => {
+    const base = documentoAntigo();
+    const mercadosDoc = {
+      shibata: { nome: 'Shibata', ic: '🏪', site: '', aprender: false, ordem: 0, corredores: base.corredores },
+      sams: { nome: 'Sams', ic: '🏬', site: '', aprender: false, ordem: 1, corredores: [{ id: 'n1', nome: 'padaria', ic: '🥖' }, { id: 'n2', nome: 'Hortifrúti', ic: '🥬' }] },
+    };
+    // o `cor` em texto foi substituído pelo mapa só com o mercado novo
+    const estragado = { ...base, mercados: mercadosDoc, itens: { ...base.itens, pao: { ...base.itens.pao, cor: { sams: 'n1' } }, alho: { ...base.itens.alho, cor: { sams: 'n2' } } } } as Record<string, unknown>;
+    delete estragado.corredores; delete estragado.aprender;
+    const e = migracao(estragado)!;
+    expect(e['itens.pao.cor.shibata']).toBe('padaria');
+    expect(e['itens.alho.cor.shibata']).toBe('horti');
+    expect(Object.keys(e).some(k => k.startsWith('itens.sem'))).toBe(false);
+    const c = aplicar(lerCasa(estragado), e);
+    expect(c.itens.pao!.cor).toEqual({ sams: 'n1', shibata: 'padaria' });
+    // depois de refeito, não mexe mais
+    const refeito = { ...estragado, itens: { ...(estragado.itens as object), pao: { ...base.itens.pao, cor: c.itens.pao!.cor }, alho: { ...base.itens.alho, cor: c.itens.alho!.cor } } };
+    expect(migracao(refeito)).toBeNull();
+  });
+  it('`cor` ainda em texto num documento já com mercados é convertido antes de qualquer gravação aninhada', () => {
+    const doc = { ...documentoAntigo(), mercados: { shibata: { nome: 'Shibata', ic: '🏪', site: '', aprender: false, ordem: 0, corredores: documentoAntigo().corredores } } } as Record<string, unknown>;
+    delete doc.corredores; delete doc.aprender;
+    expect(migracao(doc)).toEqual({ 'itens.pao.cor': { shibata: 'padaria' }, 'itens.alho.cor': { shibata: 'horti' } });
   });
   it('a casa nova já nasce no formato novo', () => {
     expect(migracao(nova())).toBeNull();

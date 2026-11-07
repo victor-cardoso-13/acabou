@@ -274,3 +274,5 @@ input { -webkit-user-select: text; user-select: text; font: inherit; color: var(
 .folha .campo-preco { display: flex; align-items: center; gap: 10px; }
 .folha .campo-preco b { font-size: 20px; }
 .lista-precos { display: flex; flex-direction: column; gap: 16px; }
+/* O botão principal de cada janela (Salvar, Criar…) fica grudado na base: não precisa rolar até o fim. */
+.folha > .ok { position: sticky; bottom: 0; z-index: 3; box-shadow: 0 -10px 12px -2px var(--papel), 0 10px 0 0 var(--papel); }
