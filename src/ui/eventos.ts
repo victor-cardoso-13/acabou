@@ -49,6 +49,18 @@ function ligarGestos(): void {
   document.addEventListener('contextmenu', ev => { if ((ev.target as HTMLElement).closest('.item')) ev.preventDefault(); });
 }
 
+/**
+ * Pulo de categoria SEM animação: a rolagem suave brigava com a barra fixa no iPhone (a tela piscava, descia e subia).
+ * A categoria para logo abaixo da barra de atalhos.
+ */
+export function pular(id: string): void {
+  const g = document.getElementById(`g-${id}`), c = $('conteudo'), barra = $('pulos');
+  if (!g) return;
+  // 1º: leva a categoria para o topo; 2º: com a barra já grudada, acerta pelo fundo real dela (tudo no mesmo instante, sem animação)
+  c.scrollTop += g.getBoundingClientRect().top - c.getBoundingClientRect().top;
+  c.scrollTop += g.getBoundingClientRect().top - barra.getBoundingClientRect().bottom - 8;
+}
+
 /* ---------- cliques ---------- */
 function aoClicar(ev: MouseEvent): void {
   if (!S.casa) return;
@@ -62,7 +74,7 @@ function aoClicar(ev: MouseEvent): void {
   if (d.tab) { S.aba = d.tab as typeof S.aba; S.aberta = null; render(); $('conteudo').scrollTop = 0; return; }
   if (d.casa) { casaSheet(sairDaConta); return; }
   if (d.id) { if (segurou) { segurou = false; return; } tocarItem(d.id); return; }
-  if (d.pula) { document.getElementById(`g-${d.pula}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); return; }
+  if (d.pula) { pular(d.pula); return; }
   if (d.criar) { enviarBusca(); return; }
   if (d.nt) { fazer(marcarSemEstoque(casa(), d.nt)); return; }
   if (d.pick) { fazer(pegar(casa(), d.pick, agora)); return; }

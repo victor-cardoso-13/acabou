@@ -1,5 +1,6 @@
 /** A casca do app (título, abas, avisos) e o desenho de cada aba. */
 import { inicioDasCompras } from '../motor/casa.ts';
+import { posicionarAviso } from './aviso.ts';
 import { ligarEventos } from './eventos.ts';
 import { ligarRender, NOMES_DAS_ABAS, S, type Aba } from './estado.ts';
 import { escapar as e } from './seguranca.ts';
@@ -21,6 +22,10 @@ export function montarCasca(): void {
       <button data-tab="organizar"><span class="ic">🧭</span>Organizar</button>
     </nav></div>`;
   montada = true;
+  // a barra de abas muda de altura (deitado é mais baixa): o aviso acompanha
+  const ro = new ResizeObserver(() => posicionarAviso());
+  ro.observe(document.querySelector('.abas')!);
+  ro.observe($('fixo'));
 }
 
 export function casaSumiu(): void { montada = false; }
@@ -49,6 +54,7 @@ export function desenhar(): void {
   if (aba === 'casa') telaCasa();
   else if (aba === 'mercado') telaMercado();
   else telaOrganizar();
+  posicionarAviso(); // o botão "Terminar compras" entra e sai: o aviso sobe junto
 }
 
 export function iniciarUI(): void {
