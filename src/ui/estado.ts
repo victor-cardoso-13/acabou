@@ -2,16 +2,23 @@
  * O que a tela sabe agora: quem sou eu, a casa (cópia local, atualizada ao vivo pela nuvem),
  * a aba aberta... e `fazer()`, o único caminho de uma ação até a nuvem.
  */
-import { aplicar, inverso, lerCasa, registrarNome } from '../motor/casa.ts';
-import type { Casa, Escritas, TipoLista } from '../motor/tipos.ts';
-import { acabouDeEntrar, inicioDasCompras } from '../motor/casa.ts';
+import {
+  acabouDeEntrar, aplicar, inicioDasCompras, inverso, lerCasa, mercadoDasCompras, mercadoEscolhido, registrarNome,
+} from '../motor/casa.ts';
+import { aplicarPrecos, inversoPrecos, type Precos } from '../motor/precos.ts';
+import type { Alvo, Casa, Escritas, MercadoComId, TipoLista } from '../motor/tipos.ts';
 
-export type Aba = 'casa' | 'mercado' | 'organizar';
+export type Aba = 'casa' | 'mercado' | 'precos' | 'organizar';
 
 export interface Eu { uid: string; email: string; nome: string }
 
 /** Quem guarda as escritas: a nuvem (Firebase) ou, no modo de teste do computador, a memória. */
 export interface Repo { gravar(escritas: Escritas): void }
+
+/** O mercado que este aparelho escolheu por último (só uma preferência: um id, nada pessoal). */
+const CHAVE_MERCADO = 'acabou.mercado';
+export const lembrarMercado = (): string | null => { try { return localStorage.getItem(CHAVE_MERCADO); } catch { return null; } };
+const guardarMercado = (id: string): void => { try { localStorage.setItem(CHAVE_MERCADO, id); } catch { /* sem armazenamento: tudo bem */ } };
 
 export const S = {
   eu: null as Eu | null,
@@ -19,6 +26,14 @@ export const S = {
   aba: 'casa' as Aba,
   org: 'corredores' as TipoLista,
   filtro: '',
+  /** Preços: procurar produto na aba */
+  filtroPreco: '',
+  /** mercado escolhido neste aparelho (fora das compras) e o que está aberto em Organizar */
+  mercadoSel: lembrarMercado() as string | null,
+  orgMercado: null as string | null,
+  /** os preços anotados (documento separado) e quem os guarda */
+  precos: {} as Precos,
+  repoPrecos: null as Repo | null,
   /** "corredores:acougue": qual cartão do Organizar está aberto no "ver" */
   aberta: null as string | null,
   /** cartão que acabou de mexer (pisca) */
@@ -44,6 +59,20 @@ export const ligarAviso = (f: typeof avisador) => { avisador = f; };
 export const avisar = (texto: string, rotulo?: string, acao?: () => void) => avisador(texto, rotulo, acao);
 
 export const casa = (): Casa => S.casa!;
+
+/** Onde estou comprando (se estou) ou o mercado escolhido neste aparelho. */
+export function mercadoAtual(): MercadoComId | undefined {
+  const c = S.casa;
+  if (!c) return undefined;
+  return mercadoDasCompras(c, meuUid(), Date.now()) ?? mercadoEscolhido(c, S.mercadoSel);
+}
+export function escolherMercado(id: string): void { S.mercadoSel = id; guardarMercado(id); render(); }
+/** O mercado aberto em Organizar → Corredores. */
+export const mercadoOrg = (): MercadoComId | undefined => (S.casa ? mercadoEscolhido(S.casa, S.orgMercado) : undefined);
+/** Onde mexer agora em Organizar: as categorias ou os corredores do mercado aberto. */
+export function alvoOrg(tipo: TipoLista = S.org): Alvo {
+  return tipo === 'categorias' ? { tipo } : { tipo, mercado: mercadoOrg()?.id ?? '' };
+}
 export const meuUid = (): string => S.eu?.uid ?? '';
 export const meuNome = (): string => S.eu?.nome ?? '';
 
@@ -57,6 +86,16 @@ export function fazer(escritas: Escritas, mensagem?: string, desfazer = false): 
   S.casa = aplicar(S.casa, escritas);
   S.repo?.gravar(escritas);
   if (mensagem) avisar(mensagem, desfazer ? 'Desfazer' : undefined, desfazer ? () => fazer(volta) : undefined);
+  render();
+}
+
+/** Anotar/apagar preços: igual a `fazer`, mas no documento de preços. */
+export function fazerPrecos(escritas: Escritas, mensagem?: string, desfazer = false): void {
+  if (Object.keys(escritas).length === 0) return;
+  const volta = inversoPrecos(S.precos, escritas);
+  S.precos = aplicarPrecos(S.precos, escritas);
+  S.repoPrecos?.gravar(escritas);
+  if (mensagem) avisar(mensagem, desfazer ? 'Desfazer' : undefined, desfazer ? () => fazerPrecos(volta) : undefined);
   render();
 }
 
@@ -91,4 +130,4 @@ export function mudarMeuNome(nome: string): void {
   fazer(registrarNome(S.casa, S.eu.uid, nome), 'Nome salvo');
 }
 
-export const NOMES_DAS_ABAS: Record<Aba, string> = { casa: 'Em casa', mercado: 'Mercado', organizar: 'Organizar' };
+export const NOMES_DAS_ABAS: Record<Aba, string> = { casa: 'Em casa', mercado: 'Mercado', precos: 'Preços', organizar: 'Organizar' };

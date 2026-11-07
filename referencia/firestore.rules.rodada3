@@ -1,0 +1,307 @@
+rules_version = '2';
+
+// Regras dos "Jogos sem anúncio".
+// Cada jogador só lê e escreve as PRÓPRIAS coisas. Todo o resto fica trancado.
+//
+//   jogadores/{uid}                 → perfil do jogador (ex.: nome)
+//   jogadores/{uid}/jogos/{jogo}    → progresso de cada jogo (ex.: "miaudoku", "mexe-mexe")
+//   salas/{codigo}                  → sala do Mexe-Mexe online (o que todos da sala veem)
+//   salas/{codigo}/maos/{uid}       → a mão de cada pessoa: SÓ a dona lê
+//   salas/{codigo}/reveladas/{uid}  → a mão mostrada no fim da rodada
+//   salas/{codigo}/pendentes/{uid}  → cartas compradas pelo jogo por quem demorou
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function ehDono(uid) {
+      return request.auth != null && request.auth.uid == uid;
+    }
+
+    match /jogadores/{uid} {
+      allow read, write: if ehDono(uid);
+
+      match /jogos/{jogo} {
+        // nome do jogo: só letras minúsculas, números e hífen (até 30)
+        allow read, delete: if ehDono(uid);
+        allow create, update: if ehDono(uid)
+          && jogo.matches('^[a-z0-9-]{1,30}$');
+      }
+    }
+
+    // ----- Acabou! (lista de mercado do casal) -----
+    // UM documento por casa. Só quem tem o e-mail do login na lista "membros" lê e escreve (no máximo 4 pessoas).
+    // Ninguém consegue procurar nem listar casas. Para entrar é preciso um CONVITE de quem já é da casa, e o
+    // convite tem duas travas: o código (10 símbolos, vale 2 dias, uma vez só) E o e-mail certo (o da conta
+    // de quem foi convidada). Digitar o e-mail de alguém numa lista não dá acesso a nada.
+    // O e-mail do login vem do Firebase Auth (sempre minúsculo); o app grava os e-mails em minúsculas.
+    // LIMITE DESTAS REGRAS: o Firestore não deixa "olhar dentro" de cada produto, então o tamanho de cada nome
+    // só é conferido pelo app; aqui se confere o formato do documento e a quantidade de cada lista.
+    // O que cada membro consegue fazer: ver e mudar tudo da casa (produtos, corredores, categorias) e convidar
+    // (até 4 pessoas no total). Não consegue apagar a casa, mexer na lista de membros à mão, nem mexer em outra casa.
+    function comEmail() { return request.auth != null && request.auth.token.email != null; }
+    function casaDe(id) { return get(/databases/$(database)/documents/casas/$(id)).data; }
+    function eMembroDe(dados) { return comEmail() && request.auth.token.email in dados.membros; }
+
+    match /casas/{casaId} {
+      function emailOk(m) { return m is string && m.size() >= 3 && m.size() <= 120 && m == m.lower(); }
+      function membrosOk(m) {
+        return m is list && m.size() >= 1 && m.size() <= 4
+          && emailOk(m[0])
+          && (m.size() < 2 || emailOk(m[1]))
+          && (m.size() < 3 || emailOk(m[2]))
+          && (m.size() < 4 || emailOk(m[3]));
+      }
+      // Formato do documento da casa. "corredores" e "aprender" são do formato ANTIGO (antes dos vários mercados):
+      // continuam permitidos (mas não obrigatórios) porque um aparelho com o app velho ainda grava assim, e porque a
+      // migração para "mercados" tira esses dois campos. "mercados" e "cidade" são opcionais pelo mesmo motivo.
+      // LIMITES SÓ DO APP (o Firestore não olha dentro de cada item): 40 corredores por mercado, tamanho de nomes e de sites.
+      function formatoOk(d) {
+        return d.keys().hasOnly(['membros', 'corredores', 'categorias', 'itens', 'noMercado', 'nomes', 'aprender', 'mercados', 'cidade'])
+          && d.keys().hasAll(['membros', 'categorias', 'itens', 'noMercado', 'nomes'])
+          && membrosOk(d.membros)
+          && (!d.keys().hasAny(['corredores']) || (d.corredores is list && d.corredores.size() <= 40))
+          && d.categorias is list && d.categorias.size() <= 40
+          && d.itens is map && d.itens.size() <= 400
+          && d.noMercado is map && d.noMercado.size() <= 4
+          && d.nomes is map && d.nomes.size() <= 4
+          && (!d.keys().hasAny(['aprender']) || d.aprender is bool)
+          && (!d.keys().hasAny(['mercados']) || (d.mercados is map && d.mercados.size() <= 6))
+          && (!d.keys().hasAny(['cidade']) || (d.cidade is string && d.cidade.size() <= 60));
+      }
+      function entradaDepois() {
+        return getAfter(/databases/$(database)/documents/casas/$(casaId)/entradas/$(request.auth.uid)).data;
+      }
+
+      // Ler (um documento ou procurar "as casas em que o meu e-mail está").
+      allow read: if eMembroDe(resource.data);
+      // Criar: a casa nasce só com quem está criando.
+      allow create: if comEmail()
+        && formatoOk(request.resource.data)
+        && request.resource.data.membros == [request.auth.token.email];
+      allow update: if formatoOk(request.resource.data) && (
+        // Quem é da casa mexe em tudo, MENOS na lista de membros (ela só cresce pelo convite).
+        (eMembroDe(resource.data) && request.resource.data.membros == resource.data.membros)
+        // Entrar com convite: só o próprio e-mail entra, no fim da lista, e só junto da "entrada" validada
+        // pelo convite (a entrada e o convite gasto vão na MESMA gravação).
+        || (comEmail() && !(request.auth.token.email in resource.data.membros)
+          && resource.data.membros.size() < 4
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['membros'])
+          && request.resource.data.membros == resource.data.membros.concat([request.auth.token.email])
+          && entradaDepois().email == request.auth.token.email));
+      allow delete: if false;
+
+      // Preços anotados: UM documento, casas/{casaId}/dados/precos = { p: { <id>: {item, centavos, emb, marca, merc, quando, fonte, por} } }.
+      // Só quem é da casa (e-mail em "membros" do documento da casa) lê e grava. Só a chave "p", com no máximo 600 anotações.
+      // O app guarda no máximo 3 por produto e mercado e apaga as de mais de 90 dias na mesma gravação.
+      // LIMITES SÓ DO APP: tamanho de marca (40), embalagem (20) e valor (maior que 0 e menor que R$ 100.000): o Firestore
+      // não olha dentro de cada anotação. Pior caso de quem é da casa: encher o documento até 600 anotações. Ninguém apaga o documento.
+      match /dados/{docId} {
+        function precosOk(d) {
+          return d.keys().hasOnly(['p']) && d.p is map && d.p.size() <= 600;
+        }
+        allow read: if docId == 'precos' && eMembroDe(casaDe(casaId));
+        allow create, update: if docId == 'precos' && eMembroDe(casaDe(casaId)) && precosOk(request.resource.data);
+        allow delete: if false;
+      }
+
+      // Registro de quem entrou com convite. Só se cria com um convite válido para este e-mail e esta casa.
+      match /entradas/{uid} {
+        function convite() { return get(/databases/$(database)/documents/convites/$(request.resource.data.codigo)).data; }
+        allow create: if comEmail() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['codigo', 'email'])
+          && request.resource.data.codigo is string
+          && request.resource.data.email == request.auth.token.email
+          && convite().casaId == casaId
+          && convite().email == request.auth.token.email
+          && request.time < convite().criadoEm + duration.value(2, 'd');
+        allow read, update, delete: if false;
+      }
+    }
+
+    // Convites: o nome do documento É o código. Só o e-mail convidado lê (get, sabendo o código); ninguém lista.
+    match /convites/{codigo} {
+      allow get: if comEmail() && resource.data.email == request.auth.token.email;
+      allow list: if false;
+      allow create: if comEmail()
+        && codigo.matches('^[ABCDEFGHJKMNPQRSTUVWXYZ2-9]{10}$')
+        && request.resource.data.keys().hasOnly(['casaId', 'email', 'por', 'criadoEm'])
+        && request.resource.data.casaId is string
+        && request.resource.data.email is string && request.resource.data.email.size() <= 120
+        && request.resource.data.email == request.resource.data.email.lower()
+        && request.resource.data.por == request.auth.token.email
+        && request.resource.data.criadoEm == request.time
+        && eMembroDe(casaDe(request.resource.data.casaId))
+        && casaDe(request.resource.data.casaId).membros.size() < 4;
+      // Gastar o convite (quem foi convidada) ou cancelar (quem é da casa).
+      allow delete: if comEmail() && (resource.data.email == request.auth.token.email || eMembroDe(casaDe(resource.data.casaId)));
+      allow update: if false;
+    }
+
+    // ----- Sugestões dos jogadores ("Dar sugestão" dentro de cada jogo) -----
+    // Quem tem conta (com e-mail) só consegue CRIAR uma sugestão em seu próprio nome: o uid e o e-mail têm de
+    // ser os do login, o jogo tem de ser um nome válido, o texto de 5 a 1000 letras e a data é a do servidor.
+    // Pelo app NINGUÉM lê, muda nem apaga sugestões (nem a própria). O Victor lê pelo console do Firebase ou
+    // pelo script ler-sugestoes.mjs (acesso de administrador, que não passa por estas regras).
+    // "diario" (opcional; hoje só o Mexe-Mexe manda): as últimas jogadas do aparelho, em texto, até 250 mil letras
+    // (bem abaixo do limite de 1 MB de um documento). Só cartas, mesa e tipo de aparelho; nada pessoal.
+    // LIMITE: não há trava de quantidade; quem tem conta poderia mandar muitas. Pior caso: estoura a cota
+    // grátis do dia e as gravações param (sem cobrança, plano Spark).
+    match /sugestoes/{id} {
+      allow create: if comEmail()
+        && request.resource.data.keys().hasOnly(['uid', 'email', 'jogo', 'texto', 'criadoEm', 'diario'])
+        && (!('diario' in request.resource.data)
+          || (request.resource.data.diario is string && request.resource.data.diario.size() <= 250000))
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.jogo is string && request.resource.data.jogo.matches('^[a-z0-9-]{1,30}$')
+        && request.resource.data.texto is string
+        && request.resource.data.texto.size() >= 5 && request.resource.data.texto.size() <= 1000
+        && request.resource.data.criadoEm == request.time;
+      allow read, update, delete: if false;
+    }
+
+    // ----- Mexe-Mexe online -----
+    // Jogo de família, mas as regras agora não deixam ninguém além do jogador da vez mexer na partida,
+    // nem trocar o criador da sala, nem mexer em coisa de outra pessoa. Quem sabe o código (o link)
+    // pode ver a sala e entrar; ninguém consegue listar as salas.
+    // O que cada gravação do jogo faz está em mexe-mexe/src/online/sala.ts (cada "allow update" abaixo é uma delas).
+    match /salas/{codigo} {
+      function sala() { return get(/databases/$(database)/documents/salas/$(codigo)).data; }
+      function logado() { return request.auth != null; }
+      function membro() { return logado() && request.auth.uid in sala().uids; }
+
+      function nomeOk(n) { return n is string && n.size() >= 1 && n.size() <= 16; }
+      function configOk(c) {
+        return c.keys().hasOnly(['curinga', 'modo', 'limiteSeg'])
+          && c.curinga is bool
+          && c.modo in ['casual', 'campeonato']
+          && c.limiteSeg is int && c.limiteSeg >= 30 && c.limiteSeg <= 600;
+      }
+      function mudou() { return request.resource.data.diff(resource.data).affectedKeys(); }
+      function souMembro() { return request.auth.uid in resource.data.uids; }
+      function souDono() { return request.auth.uid == resource.data.dono; }
+      function proximaVersao() { return request.resource.data.versao == resource.data.versao + 1; }
+      function souDaVez() { return resource.data.jogadores[resource.data.vez].uid == request.auth.uid; }
+      // Tirar alguém / sair: a lista de jogadores não muda de tamanho, a versão sobe 1 (na espera fica igual),
+      // a vez só muda se quem estava na vez saiu, e o jogo só acaba pela fase "fim".
+      function saidaOk() {
+        return request.resource.data.jogadores.size() == resource.data.jogadores.size()
+          && request.resource.data.fase in [resource.data.fase, 'fim']
+          && (resource.data.fase == 'espera' ? request.resource.data.versao == resource.data.versao : proximaVersao())
+          && (request.resource.data.vez == resource.data.vez
+              || request.resource.data.jogadores[resource.data.vez].get('removido', false) == true)
+          && (request.resource.data.vezDesde == resource.data.vezDesde || request.resource.data.vez != resource.data.vez);
+      }
+
+      allow get: if logado();
+
+      // Criar: só o criador, sala nova e vazia, no formato certo.
+      allow create: if logado()
+        && codigo.matches('^[A-Z2-9]{5}$')
+        && request.resource.data.keys().hasOnly(['dono', 'fase', 'jogadores', 'uids', 'config', 'rodada', 'mesa', 'monte',
+             'proximoId', 'cartas', 'vez', 'vezDesde', 'versao', 'motivoFim', 'quemBateu', 'resultado', 'totais', 'criadaEm'])
+        && request.resource.data.dono == request.auth.uid
+        && request.resource.data.uids == [request.auth.uid]
+        && request.resource.data.jogadores.size() == 1
+        && request.resource.data.jogadores[0].keys().hasOnly(['uid', 'nome'])
+        && request.resource.data.jogadores[0].uid == request.auth.uid
+        && nomeOk(request.resource.data.jogadores[0].nome)
+        && request.resource.data.fase == 'espera'
+        && request.resource.data.rodada == 0
+        && request.resource.data.versao == 0
+        && configOk(request.resource.data.config);
+
+      allow update: if logado() && (
+        // 1) Entrar na sala (ainda na espera, até 4): só acrescenta a si mesmo no fim das listas.
+        (!souMembro()
+          && resource.data.fase == 'espera'
+          && resource.data.uids.size() < 4
+          && mudou().hasOnly(['jogadores', 'uids', 'cartas', 'totais'])
+          && request.resource.data.uids == resource.data.uids.concat([request.auth.uid])
+          && request.resource.data.jogadores.size() == resource.data.jogadores.size() + 1
+          && request.resource.data.jogadores[0:resource.data.jogadores.size()] == resource.data.jogadores
+          && request.resource.data.jogadores[resource.data.jogadores.size()].keys().hasOnly(['uid', 'nome'])
+          && request.resource.data.jogadores[resource.data.jogadores.size()].uid == request.auth.uid
+          && nomeOk(request.resource.data.jogadores[resource.data.jogadores.size()].nome)
+          && request.resource.data.cartas == resource.data.cartas.concat([0])
+          && request.resource.data.totais == resource.data.totais.concat([0]))
+
+        // 2) O criador muda as opções (só na espera).
+        || (souDono() && resource.data.fase == 'espera'
+          && mudou().hasOnly(['config'])
+          && configOk(request.resource.data.config))
+
+        // 3) O criador começa uma rodada (da espera ou depois do fim da anterior).
+        || (souDono() && resource.data.fase in ['espera', 'fim']
+          && resource.data.uids.size() >= 2
+          && request.resource.data.fase == 'jogando'
+          && request.resource.data.rodada == resource.data.rodada + 1
+          && proximaVersao()
+          && mudou().hasOnly(['fase', 'rodada', 'mesa', 'monte', 'proximoId', 'cartas', 'vez', 'vezDesde', 'versao',
+               'motivoFim', 'quemBateu', 'resultado', 'totais']))
+
+        // 4) Só quem está na vez joga (ou compra) e passa a vez; se acabou a rodada, vai para "contando".
+        || (souMembro() && resource.data.fase == 'jogando' && souDaVez()
+          && proximaVersao()
+          && request.resource.data.fase in ['jogando', 'contando']
+          && mudou().hasOnly(['fase', 'mesa', 'monte', 'proximoId', 'cartas', 'vez', 'vezDesde', 'versao', 'motivoFim', 'quemBateu']))
+
+        // 5) Acabou o tempo de quem estava na vez: qualquer um da sala compra por ele e passa
+        //    (a conta dá 30 s de folga porque o relógio de cada aparelho pode estar um pouco diferente).
+        || (souMembro() && resource.data.fase == 'jogando'
+          && request.time.toMillis() > resource.data.vezDesde + resource.data.config.limiteSeg * 1000 - 30000
+          && proximaVersao()
+          && mudou().hasOnly(['monte', 'cartas', 'vez', 'vezDesde', 'versao']))
+
+        // 6) Todos mostraram a mão: qualquer um da sala conta os pontos.
+        || (souMembro() && resource.data.fase == 'contando'
+          && request.resource.data.fase == 'fim'
+          && proximaVersao()
+          && mudou().hasOnly(['fase', 'resultado', 'totais', 'versao']))
+
+        // 7) O criador tira alguém da sala. Ninguém some da lista, só ganha a marca "removido"; a vez só muda
+        //    se quem estava na vez foi o tirado, e o jogo só termina por falta de gente ("fim").
+        || (souDono() && request.resource.data.dono == resource.data.dono
+          && saidaOk()
+          && mudou().hasOnly(['jogadores', 'cartas', 'uids', 'versao', 'fase', 'resultado', 'vez', 'vezDesde']))
+
+        // 8) Sair da sala. Na espera a vaga some (e, se era o criador, passa para outro que está na sala).
+        || (souMembro() && resource.data.fase == 'espera'
+          && !(request.auth.uid in request.resource.data.uids)
+          && request.resource.data.uids.size() == resource.data.uids.size() - 1
+          && mudou().hasOnly(['jogadores', 'uids', 'cartas', 'totais', 'dono'])
+          && (request.resource.data.dono == resource.data.dono
+              || (souDono() && request.resource.data.dono in request.resource.data.uids)))
+        //    No meio do jogo, a pessoa sai da partida (se estava na vez, a vez passa; só ela pode ser a tirada da vez).
+        || (souMembro() && resource.data.fase in ['jogando', 'contando', 'fim']
+          && request.resource.data.dono == resource.data.dono
+          && saidaOk()
+          && (request.resource.data.vez == resource.data.vez
+              || resource.data.jogadores[resource.data.vez].uid == request.auth.uid)
+          && mudou().hasOnly(['jogadores', 'cartas', 'versao', 'fase', 'resultado', 'vez', 'vezDesde'])));
+
+      allow delete: if logado() && resource.data.dono == request.auth.uid;
+
+      // A mão de cada pessoa: só a dona lê. Ela grava a própria; o criador grava as de todos ao distribuir.
+      match /maos/{uid} {
+        allow read: if logado() && request.auth.uid == uid;
+        allow write: if membro()
+          && (request.auth.uid == uid || sala().dono == request.auth.uid)
+          && uid in sala().uids
+          && request.resource.data.keys().hasOnly(['cartas'])
+          && request.resource.data.cartas is string && request.resource.data.cartas.size() < 20000;
+      }
+      match /reveladas/{uid} {
+        allow read: if membro();
+        allow write: if membro() && request.auth.uid == uid
+          && request.resource.data.keys().hasOnly(['rodada', 'cartas'])
+          && request.resource.data.cartas is string && request.resource.data.cartas.size() < 20000;
+      }
+      match /pendentes/{uid} {
+        allow read: if membro();
+        allow write: if membro() && uid in sala().uids
+          && request.resource.data.keys().hasOnly(['cartas'])
+          && request.resource.data.cartas is string && request.resource.data.cartas.size() < 20000;
+      }
+    }
+  }
+}

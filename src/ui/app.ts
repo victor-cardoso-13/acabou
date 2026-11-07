@@ -7,6 +7,7 @@ import { escapar as e } from './seguranca.ts';
 import { telaCasa } from './tela-casa.ts';
 import { telaMercado } from './tela-mercado.ts';
 import { telaOrganizar } from './tela-organizar.ts';
+import { telaPrecos } from './tela-precos.ts';
 
 const $ = (id: string) => document.getElementById(id)!;
 let montada = false;
@@ -19,6 +20,7 @@ export function montarCasca(): void {
     <nav class="abas" aria-label="Telas">
       <button data-tab="casa"><span class="ic">🏠</span>Em casa</button>
       <button data-tab="mercado"><span class="ic">🛒</span>Mercado<span class="badge" id="badge"></span></button>
+      <button data-tab="precos"><span class="ic">🏷️</span>Preços</button>
       <button data-tab="organizar"><span class="ic">🧭</span>Organizar</button>
     </nav></div>`;
   montada = true;
@@ -53,6 +55,7 @@ export function desenhar(): void {
   $('avs').innerHTML = avatares();
   if (aba === 'casa') telaCasa();
   else if (aba === 'mercado') telaMercado();
+  else if (aba === 'precos') telaPrecos();
   else telaOrganizar();
   posicionarAviso(); // o botão "Terminar compras" entra e sai: o aviso sobe junto
 }

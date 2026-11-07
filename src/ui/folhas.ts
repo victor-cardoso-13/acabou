@@ -1,12 +1,13 @@
 /** As janelas que sobem de baixo ("folhas"): editar produto, escolher figurinha, nomes, confirmar, resumo, casa. */
 import {
-  achar, apagarLista, apagarProduto, capitalizar, criarLista, emailValido, mostrarCodigo, normalizarEmail, criarProduto, editarProduto, limparNome,
-  listarItens, renomearLista, trocarFigurinhaLista, type DadosProduto,
+  achar, apagarLista, apagarMercado, apagarProduto, capitalizar, corredorDe, criarLista, criarMercado, criarProduto, definirCorredor, editarMercado,
+  editarProduto, emailValido, limparNome, limparSite, listarItens, listarMercados, mostrarCodigo, normalizarEmail, renomearLista, trocarFigurinhaLista,
+  type DadosProduto,
 } from '../motor/casa.ts';
 import { EMOJIS, primeiroEmoji, sugerirEmoji } from '../motor/emoji.ts';
 import { LIMITES, type TipoLista } from '../motor/tipos.ts';
 import type { ResumoCompras } from '../motor/casa.ts';
-import { casa, fazer, meuNome, meuUid, mudarMeuNome, S } from './estado.ts';
+import { alvoOrg, casa, escolherMercado, fazer, mercadoAtual, mercadoOrg, meuNome, meuUid, mudarMeuNome, render, S } from './estado.ts';
 import { escapar as e } from './seguranca.ts';
 
 const $ = (id: string) => document.getElementById(id) as HTMLElement;
@@ -31,9 +32,9 @@ export function folha(html: string, liga?: () => void): void {
 export function fecharFolha(): void { $('folha').innerHTML = ''; }
 
 /* ---------- texto, confirmar ---------- */
-export function textoSheet(titulo: string, valor: string, rotulo: string, cb: (v: string) => void): void {
-  folha(`<h2>${e(titulo)}</h2><input class="campo" type="text" id="fTexto" value="${e(valor)}" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="${e(titulo)}"><button class="ok" id="fOk">${e(rotulo)}</button><button class="cancela" id="fCancela">Cancelar</button>`, () => {
-    const ir = () => { const v = limparNome(($('fTexto') as HTMLInputElement).value); if (!v) return; fecharFolha(); cb(v); };
+export function textoSheet(titulo: string, valor: string, rotulo: string, cb: (v: string) => void, max: number = LIMITES.nome): void {
+  folha(`<h2>${e(titulo)}</h2><input class="campo" type="text" id="fTexto" value="${e(valor)}" maxlength="${max}" autocomplete="off" aria-label="${e(titulo)}"><button class="ok" id="fOk">${e(rotulo)}</button><button class="cancela" id="fCancela">Cancelar</button>`, () => {
+    const ir = () => { const v = ($('fTexto') as HTMLInputElement).value.replace(/\s+/g, ' ').trim().slice(0, max); if (!v) return; fecharFolha(); cb(v); };
     $('fOk').onclick = ir;
     $('fTexto').onkeydown = ev => { if ((ev as KeyboardEvent).key === 'Enter') ir(); };
     $('fCancela').onclick = fecharFolha;
@@ -69,21 +70,38 @@ export function escolherEmoji(atual: string, cb: (emoji: string) => void): void 
 }
 
 /* ---------- produto ---------- */
-export function itemSheet(d: DadosProduto, id: string | null): void {
+/** `vmerc` = de qual mercado estão aparecendo os corredores (a barrinha de mercados troca isso). */
+export function itemSheet(d: DadosProduto, id: string | null, vmerc: string | null = mercadoAtual()?.id ?? null): void {
   const c = casa();
   const novo = id === null;
-  const chips = (tipo: TipoLista, atual: string | null) => c[tipo]
-    .map(x => `<button class="chip ${x.id === atual ? 'sel' : ''}" data-f${tipo === 'categorias' ? 'cat' : 'cor'}="${e(x.id)}">${e(x.ic)} ${e(x.nome)}</button>`).join('');
+  const todos = listarMercados(c);
+  const mv = todos.find(m => m.id === vmerc) ?? todos[0];
+  const cats = c.categorias
+    .map(x => `<button class="chip ${x.id === d.cat ? 'sel' : ''}" data-fcat="${e(x.id)}">${e(x.ic)} ${e(x.nome)}</button>`).join('');
+  const cors = mv ? mv.corredores
+    .map(x => `<button class="chip ${x.id === d.cor[mv.id] ? 'sel' : ''}" data-fcor="${e(x.id)}">${e(x.ic)} ${e(x.nome)}</button>`).join('') : '';
   folha(`<h2>${novo ? 'Produto novo' : 'Editar produto'}</h2>
     <div class="campo-item"><button class="emo" id="fEmo" aria-label="Trocar figurinha">${e(d.ic)}</button><input class="campo" type="text" id="fNome" value="${e(d.nome)}" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="Nome"></div>
-    <div class="rot">Onde fica em casa?</div><div class="chips">${chips('categorias', d.cat)}</div>
-    <div class="rot">Em que corredor do mercado?</div><div class="chips">${chips('corredores', d.cor)}</div>
+    <div class="rot">Onde fica em casa?</div><div class="chips">${cats}</div>
+    <div class="rot">Em que corredor?</div>
+    ${todos.length > 1 ? `<div class="mini" role="group" aria-label="De qual mercado">${todos.map(x => `<button data-fmerc="${e(x.id)}" class="${x.id === mv?.id ? 'on' : ''}">${e(x.ic)} ${e(x.nome)}</button>`).join('')}</div>` : ''}
+    <div class="chips">${cors || '<span class="explica">Este mercado ainda não tem corredores.</span>'}</div>
     <button class="ok" id="fSalvar">${novo ? 'Salvar e pôr na lista' : 'Salvar'}</button>
     ${novo ? '<button class="cancela" id="fCancela">Cancelar</button>' : '<button class="link" id="fApagar">Apagar este produto</button>'}`, () => {
     const pega = () => { d.nome = limparNome(($('fNome') as HTMLInputElement).value) || d.nome; };
-    $('fEmo').onclick = () => { pega(); escolherEmoji(d.ic, em => { d.ic = em; itemSheet(d, id); }); };
-    document.querySelectorAll<HTMLElement>('[data-fcat]').forEach(b => { b.onclick = () => { pega(); d.cat = b.dataset.fcat!; itemSheet(d, id); }; });
-    document.querySelectorAll<HTMLElement>('[data-fcor]').forEach(b => { b.onclick = () => { pega(); d.cor = b.dataset.fcor!; itemSheet(d, id); }; });
+    $('fEmo').onclick = () => { pega(); escolherEmoji(d.ic, em => { d.ic = em; itemSheet(d, id, mv?.id ?? null); }); };
+    document.querySelectorAll<HTMLElement>('[data-fcat]').forEach(b => { b.onclick = () => { pega(); d.cat = b.dataset.fcat!; itemSheet(d, id, mv?.id ?? null); }; });
+    document.querySelectorAll<HTMLElement>('[data-fmerc]').forEach(b => { b.onclick = () => { pega(); itemSheet(d, id, b.dataset.fmerc!); }; });
+    document.querySelectorAll<HTMLElement>('[data-fcor]').forEach(b => {
+      b.onclick = () => {
+        pega();
+        if (!mv) return;
+        // tocar de novo no corredor escolhido tira (fica "sem corredor" nesse mercado)
+        if (d.cor[mv.id] === b.dataset.fcor) { const { [mv.id]: _, ...resto } = d.cor; d.cor = resto; }
+        else d.cor = { ...d.cor, [mv.id]: b.dataset.fcor! };
+        itemSheet(d, id, mv.id);
+      };
+    });
     $('fSalvar').onclick = () => {
       pega();
       fecharFolha();
@@ -107,41 +125,127 @@ export function itemSheet(d: DadosProduto, id: string | null): void {
 export function produtoNovo(nome: string): void {
   const n = capitalizar(nome);
   const itens = listarItens(casa());
-  itemSheet({ nome: n, ic: sugerirEmoji(n, itens), cat: null, cor: null }, null);
+  itemSheet({ nome: n, ic: sugerirEmoji(n, itens), cat: null, cor: {} }, null);
+}
+
+/** "qual corredor?": durante as compras, escolhe o corredor do produto SÓ naquele mercado. */
+export function qualSheet(itemId: string): void {
+  const i = casa().itens[itemId], m = mercadoAtual();
+  if (!i || !m) return;
+  const outros = listarMercados(casa()).filter(x => x.id !== m.id).map(x => e(x.nome));
+  folha(`<h2>Onde fica ${e(i.nome)} no ${e(m.nome)}?</h2>
+    <p>Fica salvo para as próximas compras lá.${outros.length ? ` No ${outros.join(' e no ')} não muda nada.` : ''}</p>
+    <div class="chips">${m.corredores.map((c, k) => `<button class="chip" data-qc="${e(c.id)}">${k + 1}. ${e(c.ic)} ${e(c.nome)}</button>`).join('') || '<span class="explica">Este mercado ainda não tem corredores. Crie em Organizar.</span>'}</div>
+    <button class="cancela" id="fCancela">Agora não</button>`, () => {
+    $('fCancela').onclick = fecharFolha;
+    document.querySelectorAll<HTMLElement>('[data-qc]').forEach(b => {
+      b.onclick = () => {
+        const cor = m.corredores.find(x => x.id === b.dataset.qc);
+        fecharFolha();
+        if (cor) fazer(definirCorredor(casa(), itemId, m.id, cor.id), `${i.nome}: ${cor.nome}`, true);
+      };
+    });
+  });
 }
 
 /* ---------- categorias e corredores ---------- */
 export function novaLista(tipo: TipoLista): void {
-  textoSheet(tipo === 'corredores' ? 'Novo corredor' : 'Nova categoria', '', 'Criar', v => {
-    const r = criarLista(casa(), tipo, v, sugerirEmoji(v, listarItens(casa())));
+  const alvo = alvoOrg(tipo), m = mercadoOrg();
+  textoSheet(tipo === 'corredores' ? `Novo corredor no ${m?.nome ?? 'mercado'}` : 'Nova categoria', '', 'Criar', v => {
+    const r = criarLista(casa(), alvo, v, sugerirEmoji(v, listarItens(casa())));
     fazer(r.escritas, `${v} criado. Toque na figurinha para trocar.`);
     setTimeout(() => { const c = $('conteudo'); c.scrollTop = c.scrollHeight; }, 30);
   });
 }
 
 export function renomear(tipo: TipoLista, id: string): void {
-  const x = achar(casa(), tipo, id);
+  const alvo = alvoOrg(tipo);
+  const x = achar(casa(), alvo, id);
   if (!x) return;
   textoSheet(tipo === 'corredores' ? 'Nome do corredor' : 'Nome da categoria', x.nome, 'Salvar', v => {
-    fazer(renomearLista(casa(), tipo, id, v), 'Nome trocado');
+    fazer(renomearLista(casa(), alvo, id, v), 'Nome trocado');
   });
 }
 
 export function trocarFigurinha(tipo: TipoLista, id: string): void {
-  const x = achar(casa(), tipo, id);
+  const alvo = alvoOrg(tipo);
+  const x = achar(casa(), alvo, id);
   if (!x) return;
-  escolherEmoji(x.ic, em => { fecharFolha(); fazer(trocarFigurinhaLista(casa(), tipo, id, em)); });
+  escolherEmoji(x.ic, em => { fecharFolha(); fazer(trocarFigurinhaLista(casa(), alvo, id, em)); });
 }
 
 export function apagarListaSheet(tipo: TipoLista, id: string): void {
-  const x = achar(casa(), tipo, id);
+  const alvo = alvoOrg(tipo), m = mercadoOrg();
+  const x = achar(casa(), alvo, id);
   if (!x) return;
-  const campo = tipo === 'corredores' ? 'cor' : 'cat';
-  const n = listarItens(casa()).filter(i => i[campo] === id).length;
-  const sem = tipo === 'corredores' ? 'Sem corredor' : 'Sem categoria';
-  confirmar(`Apagar ${x.nome}?`, n ? `Os ${n} produtos daqui vão para "${sem}". Nenhum produto some.` : 'Não tem nenhum produto aqui.', 'Apagar', () => {
+  const n = listarItens(casa()).filter(i => (tipo === 'corredores' ? m && corredorDe(casa(), i, m.id) === id : i.cat === id)).length;
+  const sem = tipo === 'corredores' ? `Sem corredor no ${m?.nome ?? 'mercado'}` : 'Sem categoria';
+  confirmar(`Apagar ${x.nome}?`, n ? `Os ${n} produtos daqui vão para "${sem}". Nenhum produto some.${tipo === 'corredores' ? ' Os outros mercados não mudam.' : ''}` : 'Não tem nenhum produto aqui.', 'Apagar', () => {
     S.aberta = null;
-    fazer(apagarLista(casa(), tipo, id), `${x.nome} apagado`, true);
+    fazer(apagarLista(casa(), alvo, id), `${x.nome} apagado`, true);
+  });
+}
+
+/* ---------- mercados ---------- */
+export function novoMercadoSheet(): void {
+  const base = mercadoOrg();
+  if (listarMercados(casa()).length >= LIMITES.mercados) {
+    folha(`<h2>Mercados demais</h2><p>O limite é ${LIMITES.mercados} mercados. Apague um para criar outro.</p><button class="ok" id="fOk">Entendi</button>`, () => { $('fOk').onclick = fecharFolha; });
+    return;
+  }
+  folha(`<h2>Mercado novo</h2>
+    <input class="campo" type="text" id="fMerc" placeholder="Nome. Ex.: Atacadão" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="Nome do mercado">
+    <input class="campo" type="url" id="fSite" placeholder="Site com os preços (opcional)" maxlength="${LIMITES.site}" autocomplete="off" autocapitalize="none" inputmode="url" aria-label="Site do mercado">
+    ${base ? `<div class="troca"><input type="checkbox" id="fCopia" checked><label for="fCopia"><b>Copiar os corredores do ${e(base.nome)}</b><br>Vem com os mesmos corredores e cada produto no mesmo lugar. Depois é só ajustar a ordem.</label></div>
+    <p class="nota">Desligado: começa vazio, com tudo em "Sem corredor".</p>` : ''}
+    <div class="erro" id="fErro" role="alert"></div>
+    <button class="ok" id="fCriar">Criar mercado</button><button class="cancela" id="fCancela">Cancelar</button>`, () => {
+    $('fCancela').onclick = fecharFolha;
+    ($('fMerc') as HTMLInputElement).focus();
+    $('fCriar').onclick = () => {
+      const nome = ($('fMerc') as HTMLInputElement).value, site = ($('fSite') as HTMLInputElement).value;
+      if (!limparNome(nome)) { $('fErro').textContent = 'Escreva o nome do mercado.'; return; }
+      if (limparSite(site) === null) { $('fErro').textContent = 'O site tem que começar com https:// (ou deixe vazio).'; return; }
+      const copiar = base && (document.getElementById('fCopia') as HTMLInputElement | null)?.checked ? base.id : null;
+      const r = criarMercado(casa(), nome, site, copiar);
+      if (!Object.keys(r.escritas).length) { $('fErro').textContent = 'Não deu para criar. Confira o nome e o site.'; return; }
+      fecharFolha();
+      S.orgMercado = r.id;
+      fazer(r.escritas, copiar ? `${limparNome(nome)} criado com os corredores do ${base!.nome}` : `${limparNome(nome)} criado. Crie os corredores dele aqui.`, true);
+    };
+  });
+}
+
+export function editarMercadoSheet(): void {
+  const m = mercadoOrg();
+  if (!m) return;
+  folha(`<h2>Editar o ${e(m.nome)}</h2>
+    <input class="campo" type="text" id="fMerc" value="${e(m.nome)}" maxlength="${LIMITES.nome}" autocomplete="off" aria-label="Nome do mercado">
+    <input class="campo" type="url" id="fSite" value="${e(m.site)}" placeholder="Site com os preços (opcional)" maxlength="${LIMITES.site}" autocomplete="off" autocapitalize="none" inputmode="url" aria-label="Site do mercado">
+    <p class="nota">O site só entra no texto da pergunta ao Claude (aba Preços). Não vira link.</p>
+    <div class="erro" id="fErro" role="alert"></div>
+    <button class="ok" id="fOk">Salvar</button><button class="cancela" id="fCancela">Cancelar</button>`, () => {
+    $('fCancela').onclick = fecharFolha;
+    $('fOk').onclick = () => {
+      const nome = ($('fMerc') as HTMLInputElement).value, site = ($('fSite') as HTMLInputElement).value;
+      if (!limparNome(nome)) { $('fErro').textContent = 'Escreva o nome do mercado.'; return; }
+      if (limparSite(site) === null) { $('fErro').textContent = 'O site tem que começar com https:// (ou deixe vazio).'; return; }
+      fecharFolha();
+      fazer(editarMercado(casa(), m.id, nome, site), 'Mercado salvo');
+    };
+  });
+}
+
+export function apagarMercadoSheet(): void {
+  const m = mercadoOrg();
+  if (!m || listarMercados(casa()).length < 2) return;
+  confirmar(`Apagar o ${m.nome}?`, 'Somem os corredores dele. A lista e os produtos continuam iguais, e os outros mercados não mudam.', 'Apagar', () => {
+    S.aberta = null;
+    const outro = listarMercados(casa()).find(x => x.id !== m.id)!;
+    fazer(apagarMercado(casa(), m.id), `${m.nome} apagado`, true);
+    S.orgMercado = outro.id;
+    if (S.mercadoSel === m.id) escolherMercado(outro.id);
+    else render();
   });
 }
 
@@ -151,9 +255,9 @@ export function perguntarNome(): void {
 }
 
 /* ---------- fim das compras ---------- */
-export function resumoSheet(r: ResumoCompras, depois: () => void): void {
+export function resumoSheet(r: ResumoCompras, mercado: string, depois: () => void): void {
   const p = r.pegos.length, s = r.semEstoque.length, f = r.restaram.length;
-  folha(`<h2>Compras feitas</h2>
+  folha(`<h2>Compras feitas no ${e(mercado)}</h2>
     <p>✓ <b>${p} ${p === 1 ? 'item voltou' : 'itens voltaram'}</b> para "tem em casa".</p>
     ${s ? `<p>↻ <b>${r.semEstoque.map(i => e(i.nome)).join(', ')}</b> não tinha: continua na lista.</p>` : ''}
     ${f ? `<p>• ${f} ${f === 1 ? 'item ficou' : 'itens ficaram'} sem pegar e continuam na lista.</p>` : ''}

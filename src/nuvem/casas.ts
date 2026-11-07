@@ -28,6 +28,8 @@ export interface CasaNaNuvem {
   dados: unknown;
   /** há marcações feitas neste aparelho que ainda não chegaram ao servidor */
   pendente: boolean;
+  /** esta leitura veio só da memória do aparelho (ainda não falou com o servidor) */
+  deCache: boolean;
 }
 
 /**
@@ -39,7 +41,7 @@ export function observarCasa(email: string, fn: (c: CasaNaNuvem | null) => void,
   const q = query(collection(banco, COLECAO), where('membros', 'array-contains', email));
   return onSnapshot(q, snap => {
     const casas = snap.docs
-      .map(d => ({ id: d.id, dados: d.data(), pendente: d.metadata.hasPendingWrites }))
+      .map(d => ({ id: d.id, dados: d.data(), pendente: d.metadata.hasPendingWrites, deCache: d.metadata.fromCache }))
       .sort((a, b) => Number(donaDe(b.dados) === email) - Number(donaDe(a.dados) === email) || a.id.localeCompare(b.id));
     fn(casas[0] ?? null);
   }, erro);
@@ -69,6 +71,25 @@ export function paraFirestore(escritas: Escritas): Record<string, unknown> {
 export function gravar(casaId: string, escritas: Escritas): Promise<void> {
   if (Object.keys(escritas).length === 0) return Promise.resolve();
   return updateDoc(doc(banco, COLECAO, casaId), paraFirestore(escritas));
+}
+
+/* ---------- preços ----------
+ * Documento separado, casas/{casaId}/dados/precos = { p: { <id>: anotação } }, para não engordar o da casa.
+ * O documento ainda não existe até a 1ª anotação: por isso a gravação usa setDoc com merge (updateDoc falharia).
+ * As escritas do motor ("p.<id>") viram o objeto aninhado { p: { <id>: valor | deleteField() } }.
+ */
+const refPrecos = (casaId: string) => doc(banco, COLECAO, casaId, 'dados', 'precos');
+
+export function observarPrecos(casaId: string, fn: (dados: unknown) => void, erro: (e: unknown) => void): Unsubscribe {
+  return onSnapshot(refPrecos(casaId), snap => fn(snap.exists() ? snap.data() : {}), erro);
+}
+
+/** Nunca dê `await` na hora do toque (sem internet a promessa só termina quando ela volta). */
+export function gravarPrecos(casaId: string, escritas: Escritas): Promise<void> {
+  const p: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(escritas)) if (k.startsWith('p.')) p[k.slice(2)] = v === APAGAR ? deleteField() : v;
+  if (Object.keys(p).length === 0) return Promise.resolve();
+  return setDoc(refPrecos(casaId), { p }, { merge: true });
 }
 
 /* ---------- convite ----------
