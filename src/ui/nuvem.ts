@@ -1,6 +1,7 @@
 /** Liga o app à nuvem: conta, a casa ao vivo e a gravação. Só é carregado depois que a página abre. */
-import { normalizarCodigo, registrarNome, casaInicial } from '../motor/casa.ts';
+import { normalizarCodigo, registrarNome, casaInicial, migracao } from '../motor/casa.ts';
 import { lerCasa } from '../motor/casa.ts';
+import { lerPrecos } from '../motor/precos.ts';
 import { casaSumiu } from './app.ts';
 import { ligarSair } from './eventos.ts';
 import { avisar, fazer, receberCasa, render, S, type Eu } from './estado.ts';
@@ -22,10 +23,29 @@ export async function iniciarNuvem(): Promise<void> {
   S.guardarNome = conta.trocarNome;
 
   let parar: (() => void) | null = null;
+  let pararPrecos: (() => void) | null = null;
+  let precosDe: string | null = null;
   let nomeRegistrado = false;
+  /**
+   * Observa os preços da casa. Logo que a casa é criada o servidor pode ainda não ter o documento dela (a regra precisa
+   * dele para saber quem é membro) e recusa a escuta: por isso, se falhar, tenta de novo (a cada 3 s, até 5 vezes).
+   */
+  const ligarPrecos = (casaId: string, tentativa = 0): void => {
+    pararPrecos?.(); precosDe = casaId; if (tentativa === 0) S.precos = {};
+    S.repoPrecos = { gravar: escritas => { casas.gravarPrecos(casaId, escritas).catch(err => avisar(conta.mensagemDeErro(err))); } };
+    pararPrecos = casas.observarPrecos(casaId, dados => { S.precos = lerPrecos(dados); render(); }, err => {
+      pararPrecos = null;
+      if (precosDe !== casaId) return;
+      if (tentativa < 5) setTimeout(() => { if (precosDe === casaId) ligarPrecos(casaId, tentativa + 1); }, 3000);
+      else avisar(conta.mensagemDeErro(err));
+    });
+  };
+  // a migração roda no máximo UMA vez por abertura do app (se as regras recusarem, não fica tentando em loop)
+  let migrou = false;
 
   conta.observarConta(u => {
     parar?.(); parar = null;
+    pararPrecos?.(); pararPrecos = null; precosDe = null; S.precos = {}; S.repoPrecos = null;
     S.casa = null; S.repo = null; S.convidar = null; casaSumiu(); nomeRegistrado = false;
     if (!u) {
       S.eu = null;
@@ -39,6 +59,7 @@ export async function iniciarNuvem(): Promise<void> {
     mostrarCarregando('Procurando a sua casa…');
     parar = casas.observarCasa(eu.email, c => {
       if (!c) {
+        pararPrecos?.(); pararPrecos = null; precosDe = null; S.precos = {}; S.repoPrecos = null;
         S.casa = null; S.repo = null; casaSumiu();
         const criar = async () => { await casas.criarCasa(casaInicial(eu.email, eu.uid, eu.nome)); };
         const entrar = async (texto: string) => {
@@ -52,6 +73,14 @@ export async function iniciarNuvem(): Promise<void> {
       S.convidar = email => casas.criarConvite(c.id, email, eu.email);
       S.repo = { gravar: escritas => { casas.gravar(c.id, escritas).catch(err => avisar(conta.mensagemDeErro(err))); } };
       receberCasa(c.dados);
+      // Preços: documento separado, observado ao vivo (um só observador por casa)
+      if (precosDe !== c.id) ligarPrecos(c.id);
+      // Migração (uma vez, automática): só a partir de uma leitura CONFIRMADA pelo servidor, nunca da memória do aparelho,
+      // para uma cópia velha não apagar o que o outro celular já fez.
+      if (!migrou && !c.deCache && !c.pendente) {
+        const m = migracao(c.dados);
+        if (m) { migrou = true; fazer(m); }
+      }
       if (!nomeRegistrado && S.casa) {
         nomeRegistrado = true;
         // nome: o da conta; senão o que já está salvo na casa; senão pergunta (nunca usa o começo do e-mail)

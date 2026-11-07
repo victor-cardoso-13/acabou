@@ -50,7 +50,7 @@ function desenharGrade(): void {
     h = `<div class="grade">${achados.map(botao).join('')}${exato ? '' : `<button class="item criar" data-criar="1"><span class="e">${e(sugerirEmoji(f, itens))}</span><span class="nm">Criar “${e(f)}”</span><span class="tag">produto novo</span></button>`}</div>`;
   } else {
     const grupos = c.categorias.map(k => ({ id: k.id, nome: `${e(k.ic)} ${e(k.nome)}`, its: itens.filter(i => i.cat === k.id) }));
-    grupos.push({ id: 'semcat', nome: 'Sem categoria', its: itens.filter(i => !i.cat || !achar(c, 'categorias', i.cat)) });
+    grupos.push({ id: 'semcat', nome: 'Sem categoria', its: itens.filter(i => !i.cat || !achar(c, { tipo: 'categorias' }, i.cat)) });
     for (const g of grupos) if (g.its.length) h += `<div class="grupo" id="g-${e(g.id)}"><h3>${g.nome}</h3><div class="grade">${g.its.map(botao).join('')}</div></div>`;
     if (!h) h = '<p class="vazio">Ainda não tem nenhum produto. Escreva o nome do que acabou no campo de cima.</p>';
   }

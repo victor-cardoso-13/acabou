@@ -12,3 +12,8 @@ export function combina(nome: string, digitado: string): boolean {
 export function mesmoNome(a: string, b: string): boolean {
   return semAcento(a) === semAcento(b);
 }
+
+/** Para comparar nomes vindos de fora (resposta do Claude): sem acento, sem maiúscula e com o apóstrofo curvo (Sam’s) igual ao reto (Sam's). */
+export function normalizarNome(texto: string): string {
+  return semAcento(String(texto ?? '').replace(/[\u2018\u2019\u00b4`]/g, "'")).replace(/\s+/g, ' ');
+}

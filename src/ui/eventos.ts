@@ -1,7 +1,10 @@
 /** Toques e gestos: um único ouvinte de cada tipo para a página toda. */
 import { acharDeNovo, definirAprender, marcarSemEstoque, pegar } from '../motor/casa.ts';
-import { apagarListaSheet, casaSheet, folhaAberta, itemSheet, novaLista, renomear, trocarFigurinha } from './folhas.ts';
-import { casa, fazer, render, S } from './estado.ts';
+import {
+  apagarListaSheet, apagarMercadoSheet, casaSheet, editarMercadoSheet, folhaAberta, itemSheet, novaLista, novoMercadoSheet, qualSheet, renomear, trocarFigurinha,
+} from './folhas.ts';
+import { casa, escolherMercado, fazer, mercadoOrg, render, S } from './estado.ts';
+import { abrirColar, abrirPergunta, abrirPrecoSheet, editarCidade } from './folhas-precos.ts';
 import { tocarItem, enviarBusca } from './tela-casa.ts';
 import { comecar, terminar } from './tela-mercado.ts';
 import { mover } from './tela-organizar.ts';
@@ -38,7 +41,7 @@ function ligarGestos(): void {
       t.classList.remove('segurando');
       navigator.vibrate?.(15);
       const i = casa().itens[t.dataset.id!];
-      if (i) itemSheet({ nome: i.nome, ic: i.ic, cat: i.cat, cor: i.cor }, t.dataset.id!);
+      if (i) itemSheet({ nome: i.nome, ic: i.ic, cat: i.cat, cor: { ...i.cor } }, t.dataset.id!);
     }, 500);
   });
   document.addEventListener('pointerup', soltar);
@@ -79,19 +82,30 @@ function aoClicar(ev: MouseEvent): void {
   if (d.nt) { fazer(marcarSemEstoque(casa(), d.nt)); return; }
   if (d.pick) { fazer(pegar(casa(), d.pick, agora)); return; }
   if (d.volta) { fazer(acharDeNovo(casa(), d.volta)); return; }
+  if (d.merc) { escolherMercado(d.merc); return; }
+  if (d.orgmerc) { S.orgMercado = d.orgmerc; S.aberta = null; render(); return; }
+  if (d.qual) { qualSheet(d.qual); return; }
+  if (d.anotar) { abrirPrecoSheet(d.anotar); return; }
   if (d.orgaba) { S.org = d.orgaba as TipoLista; S.aberta = null; render(); return; }
   if (d.up) { const [tp, id] = dividir(d.up); mover(tp, id, -1); return; }
   if (d.down) { const [tp, id] = dividir(d.down); mover(tp, id, 1); return; }
   if (d.abre) { S.aberta = S.aberta === d.abre ? null : d.abre; render(); return; }
   if (d.edit) {
     const i = casa().itens[d.edit];
-    if (i) itemSheet({ nome: i.nome, ic: i.ic, cat: i.cat, cor: i.cor }, d.edit);
+    if (i) itemSheet({ nome: i.nome, ic: i.ic, cat: i.cat, cor: { ...i.cor } }, d.edit, mercadoOrg()?.id ?? null);
     return;
   }
   if (d.emo) { const [tp, id] = dividir(d.emo); trocarFigurinha(tp, id); return; }
   if (d.ren) { const [tp, id] = dividir(d.ren); renomear(tp, id); return; }
   if (d.del) { const [tp, id] = dividir(d.del); apagarListaSheet(tp, id); return; }
   if (d.novo) { novaLista(d.novo as TipoLista); return; }
+  if (t.id === 'novoMerc') { novoMercadoSheet(); return; }
+  if (t.id === 'editMerc') { editarMercadoSheet(); return; }
+  if (t.id === 'delMerc') { apagarMercadoSheet(); return; }
+  if (t.id === 'perguntar') { abrirPergunta(); return; }
+  if (t.id === 'colar') { abrirColar(); return; }
+  if (t.id === 'anotarNovo') { abrirPrecoSheet(null); return; }
+  if (t.id === 'cidade') { editarCidade(); return; }
   if (t.id === 'comecar') { comecar(); return; }
   if (t.id === 'terminar') { terminar(); return; }
 }
@@ -101,7 +115,8 @@ export function ligarEventos(): void {
   document.addEventListener('click', aoClicar);
   document.addEventListener('change', ev => {
     const el = ev.target as HTMLInputElement;
-    if (el.id === 'aprender' && S.casa) fazer(definirAprender(el.checked), el.checked ? 'Vou aprender a ordem dos corredores' : 'Aprender a ordem desligado');
+    const m = mercadoOrg();
+    if (el.id === 'aprender' && S.casa && m) fazer(definirAprender(m.id, el.checked), el.checked ? `Vou aprender a ordem dos corredores do ${m.nome}` : 'Aprender a ordem desligado');
   });
   // teclado: o item do mercado é um "botão" feito de div
   document.addEventListener('keydown', ev => {

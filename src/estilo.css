@@ -228,3 +228,49 @@ input { -webkit-user-select: text; user-select: text; font: inherit; color: var(
   .abas .badge { position: static; }
   .folha { max-height: 96%; }
 }
+
+/* ====== Rodada 3: vários mercados e preços (portado do mock aprovado, mock-v2.html) ====== */
+.mercs { display: flex; gap: 6px; flex-wrap: wrap; }
+.merc { border: 2px solid var(--linha); background: #fff; border-radius: 999px; padding: 8px 14px; font-weight: 800; font-size: 15px; }
+.merc.on { background: var(--tinta); border-color: var(--tinta); color: var(--papel); }
+.merc.mais { border-style: dashed; border-color: var(--ambar); background: var(--papel); }
+.resumo .mercs .merc { background: transparent; border-color: rgba(255, 250, 241, .35); color: var(--papel); }
+.resumo .mercs .merc.on { background: var(--papel); color: var(--tinta); border-color: var(--papel); }
+.resumo .onde { font-size: 14px; font-weight: 700; opacity: .85; }
+.linha .qual, .cartao-preco .qual { background: var(--ambar-claro); color: var(--tinta); font-weight: 800; font-size: 13px; padding: 8px 10px; border-radius: 10px; flex: none; }
+.linha .tx small.preco { color: var(--verde); font-weight: 800; }
+.linha .tx small.preco.outro { color: var(--ambar-forte); }
+.linha .tx small.recado { color: var(--ambar-forte); }
+.mini { display: flex; gap: 4px; background: var(--linha); border-radius: 12px; padding: 3px; }
+.mini button { flex: 1; border-radius: 9px; padding: 7px 4px; font-weight: 800; font-size: 13px; color: var(--tinta-suave); }
+.mini button.on { background: var(--papel); color: var(--tinta); box-shadow: 0 1px 3px rgba(59, 47, 42, .15); }
+.troca { display: flex; align-items: center; gap: 12px; background: #fff; border: 2px solid var(--linha); border-radius: 16px; padding: 12px; }
+.troca input[type=checkbox] { width: 26px; height: 26px; accent-color: var(--verde); flex: none; margin: 0; }
+.troca label { line-height: 1.35; }
+.links { display: flex; gap: 16px; flex-wrap: wrap; }
+.links .link { color: var(--tinta-suave); }
+.links .link.perigo { color: var(--perigo); }
+.folha .nota { font-size: 13px; color: var(--tinta-suave); line-height: 1.4; }
+.folha .erro { color: var(--perigo); font-weight: 800; font-size: 14px; }
+.folha textarea.pergunta, textarea.pergunta { width: 100%; min-height: 220px; font: inherit; font-size: 14px; line-height: 1.45; padding: 12px; border-radius: 14px; border: 2px solid var(--linha); background: #fff; color: var(--tinta); resize: none; -webkit-user-select: text; user-select: text; }
+.ia { background: #fff; border: 2px dashed var(--ambar); border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.ia .tx { font-size: 15px; line-height: 1.4; }
+.ia .tx b { font-family: var(--titulo); font-size: 18px; font-weight: 600; }
+.ia .botoes { display: flex; gap: 8px; }
+.ia .botoes button { flex: 1; border-radius: 14px; padding: 12px; font-weight: 800; font-size: 16px; background: var(--ambar); }
+.ia .botoes button.claro { background: var(--papel); border: 2px solid var(--ambar); }
+.ia .cidade { font-size: 13px; color: var(--tinta-suave); font-weight: 700; text-align: left; padding: 2px 0; }
+.rotulo-grupo.outro { color: var(--ambar-forte); }
+.cartao-preco { padding: 10px 12px; gap: 6px; }
+.pl { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--linha); padding-top: 6px; }
+.pl .pm { width: 104px; flex: none; font-weight: 800; font-size: 14px; overflow-wrap: anywhere; }
+.pl .pv { flex: 1; min-width: 0; font-size: 15px; display: flex; flex-direction: column; }
+.pl .pv small { color: var(--tinta-suave); font-weight: 700; font-size: 12px; }
+.pl .vazio-p { color: var(--tinta-suave); font-weight: 700; font-size: 14px; }
+.pl.melhor .pv b { color: var(--verde); }
+.pl.velho { opacity: .6; }
+.selo { background: var(--verde-claro); color: var(--verde); font-weight: 800; font-size: 12px; border-radius: 8px; padding: 3px 7px; flex: none; }
+.abas button { font-size: 12px; }
+.folha .campo-preco { display: flex; align-items: center; gap: 10px; }
+.folha .campo-preco b { font-size: 20px; }
+.lista-precos { display: flex; flex-direction: column; gap: 16px; }
