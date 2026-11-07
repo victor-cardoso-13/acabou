@@ -465,8 +465,22 @@ export const jaTemMercados = (dados: unknown): boolean => 'mercados' in objeto(d
  * pelo servidor (nunca de cache): uma cópia velha não pode apagar o que o outro celular já fez.
  */
 export function migracao(dados: unknown): Escritas | null {
-  if (jaTemMercados(dados)) return null;
   const d = objeto(dados);
+  const shi = objeto(objeto(d.mercados)[ID_SHIBATA]);
+  // Conserto: se um toque (ex.: mover corredor) gravou "mercados.shibata.corredores" ANTES da migração, o mercado nasceu
+  // sem nome. Completa só o que falta (nome, figurinha, site, produtos) e mantém a ordem que a pessoa fez.
+  if (jaTemMercados(d) && typeof shi.nome !== 'string' && 'corredores' in shi) {
+    const r: Escritas = { [`mercados.${ID_SHIBATA}.nome`]: 'Shibata', [`mercados.${ID_SHIBATA}.ic`]: '🏪', [`mercados.${ID_SHIBATA}.site`]: SITE_SHIBATA };
+    if (typeof shi.ordem !== 'number') r[`mercados.${ID_SHIBATA}.ordem`] = 0;
+    if (typeof shi.aprender !== 'boolean') r[`mercados.${ID_SHIBATA}.aprender`] = d.aprender === true;
+    if (typeof d.cidade !== 'string') r.cidade = CIDADE_PADRAO;
+    for (const [id, bruto] of Object.entries(objeto(d.itens))) {
+      const cor = objeto(bruto).cor;
+      if (idSeguro(id) && typeof cor === 'string' && cor) r[`itens.${id}.cor`] = { [ID_SHIBATA]: cor.slice(0, 40) };
+    }
+    return r;
+  }
+  if (jaTemMercados(d)) return null;
   const r: Escritas = {
     [`mercados.${ID_SHIBATA}`]: { nome: 'Shibata', ic: '🏪', site: SITE_SHIBATA, aprender: d.aprender === true, ordem: 0, corredores: lerListas(d.corredores) } satisfies Mercado,
     corredores: APAGAR, aprender: APAGAR,
