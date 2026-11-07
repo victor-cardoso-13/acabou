@@ -259,10 +259,12 @@ export function textoPergunta(cidade: string, itens: { nome: string }[], mercado
     + '\nPara cada item, diga o preço, a embalagem e a marca' + (mais ? ' em cada mercado' : '') + ', e compare pelo preço por unidade de medida (dúzia, kg, litro ou unidade), porque as embalagens mudam de tamanho.'
     + '\nDiga onde encontrou cada preço. Se não achar, escreva "não achei" em vez de chutar.'
     + (mais ? '\nDepois, diga se vale ir num mercado só ou dividir a compra.' : '')
-    + '\n\nNo fim de tudo, escreva uma linha só com a palavra ACABOU e, embaixo, uma linha por item, exatamente assim:'
+    + '\n\nFaça a análise completa e explique o resultado. Depois, no FIM da resposta, coloque o bloco abaixo DENTRO DE UMA CAIXA DE CÓDIGO (três crases, para eu tocar em "copiar" e colar direto no meu app). A 1ª linha da caixa é só a palavra ACABOU e, embaixo, uma linha por item, exatamente neste formato:'
+    + '\n```\nACABOU'
     + `\nitem | ${nomes.map(n => `${n}: R$ preço (embalagem, marca)`).join(' | ')}`
     + `\nExemplo: Ovos | ${nomes.map((n, k) => `${n}: ${k ? 'R$ 9,49 (20 un, Cami)' : 'R$ 8,99 (20 un, Mantiqueira)'}`).join(' | ')}`
-    + '\nSe não achar um preço, escreva "não achei" no lugar dele.';
+    + '\n```'
+    + '\nNa caixa, use só o nome do item, sem negrito. Se não achar um preço, escreva "não achei" no lugar dele. Não ponha nada além do bloco dentro da caixa.';
 }
 
 export type ErroResposta = 'sem-bloco' | 'nada-bate';

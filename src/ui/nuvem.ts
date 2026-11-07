@@ -40,8 +40,8 @@ export async function iniciarNuvem(): Promise<void> {
       else avisar(conta.mensagemDeErro(err));
     });
   };
-  // a migração roda no máximo UMA vez por abertura do app (se as regras recusarem, não fica tentando em loop)
-  let migrou = false;
+  // a migração roda no máximo 3 vezes por abertura do app (se as regras recusarem, não fica tentando em loop)
+  let tentativasMigracao = 0;
 
   conta.observarConta(u => {
     parar?.(); parar = null;
@@ -77,9 +77,9 @@ export async function iniciarNuvem(): Promise<void> {
       if (precosDe !== c.id) ligarPrecos(c.id);
       // Migração (uma vez, automática): só a partir de uma leitura CONFIRMADA pelo servidor, nunca da memória do aparelho,
       // para uma cópia velha não apagar o que o outro celular já fez.
-      if (!migrou && !c.deCache && !c.pendente) {
+      if (tentativasMigracao < 3 && !c.deCache && !c.pendente) {
         const m = migracao(c.dados);
-        if (m) { migrou = true; fazer(m); }
+        if (m) { tentativasMigracao++; fazer(m); }
       }
       if (!nomeRegistrado && S.casa) {
         nomeRegistrado = true;

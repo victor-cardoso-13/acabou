@@ -466,21 +466,45 @@ export const jaTemMercados = (dados: unknown): boolean => 'mercados' in objeto(d
  */
 export function migracao(dados: unknown): Escritas | null {
   const d = objeto(dados);
-  const shi = objeto(objeto(d.mercados)[ID_SHIBATA]);
+  if (!jaTemMercados(d)) return migracaoCompleta(d);
+  const mercados = objeto(d.mercados);
+  const shi = objeto(mercados[ID_SHIBATA]);
+  const r: Escritas = {};
   // Conserto: se um toque (ex.: mover corredor) gravou "mercados.shibata.corredores" ANTES da migração, o mercado nasceu
-  // sem nome. Completa só o que falta (nome, figurinha, site, produtos) e mantém a ordem que a pessoa fez.
-  if (jaTemMercados(d) && typeof shi.nome !== 'string' && 'corredores' in shi) {
-    const r: Escritas = { [`mercados.${ID_SHIBATA}.nome`]: 'Shibata', [`mercados.${ID_SHIBATA}.ic`]: '🏪', [`mercados.${ID_SHIBATA}.site`]: SITE_SHIBATA };
+  // sem nome. Completa só o que falta e mantém a ordem que a pessoa fez.
+  if (typeof shi.nome !== 'string' && 'corredores' in shi) {
+    Object.assign(r, { [`mercados.${ID_SHIBATA}.nome`]: 'Shibata', [`mercados.${ID_SHIBATA}.ic`]: '🏪', [`mercados.${ID_SHIBATA}.site`]: SITE_SHIBATA });
     if (typeof shi.ordem !== 'number') r[`mercados.${ID_SHIBATA}.ordem`] = 0;
     if (typeof shi.aprender !== 'boolean') r[`mercados.${ID_SHIBATA}.aprender`] = d.aprender === true;
     if (typeof d.cidade !== 'string') r.cidade = CIDADE_PADRAO;
-    for (const [id, bruto] of Object.entries(objeto(d.itens))) {
+  }
+  const itens = objeto(d.itens);
+  // `cor` ainda em texto: gravar um caminho aninhado (cor.<mercado>) por cima de um texto APAGA o texto. Converte primeiro.
+  if (ID_SHIBATA in mercados) {
+    for (const [id, bruto] of Object.entries(itens)) {
       const cor = objeto(bruto).cor;
       if (idSeguro(id) && typeof cor === 'string' && cor) r[`itens.${id}.cor`] = { [ID_SHIBATA]: cor.slice(0, 40) };
     }
-    return r;
   }
-  if (jaTemMercados(d)) return null;
+  // Recuperação do estrago de "copiar corredores" feito com o `cor` ainda em texto: NENHUM produto com corredor no Shibata,
+  // mas produtos com corredor em outro mercado. Refaz o do Shibata pelo corredor de mesmo NOME nesse outro mercado.
+  const lista = lerListas(shi.corredores);
+  const mapas = Object.entries(itens).map(([id, b]) => [id, objeto(objeto(b).cor)] as const);
+  const algumShibata = mapas.some(([, c]) => typeof c[ID_SHIBATA] === 'string') || Object.keys(r).some(k => k.endsWith('.cor'));
+  if (!algumShibata && lista.length) {
+    for (const [id, cor] of mapas) {
+      if (!idSeguro(id)) continue;
+      for (const [m, cid] of Object.entries(cor)) {
+        const nome = lerListas(objeto(mercados[m]).corredores).find(c => c.id === cid)?.nome.toLowerCase();
+        const iguais = nome ? lista.filter(c => c.nome.toLowerCase() === nome) : [];
+        if (iguais.length === 1) { r[`itens.${id}.cor.${ID_SHIBATA}`] = iguais[0]!.id; break; }
+      }
+    }
+  }
+  return Object.keys(r).length ? r : null;
+}
+
+function migracaoCompleta(d: Record<string, unknown>): Escritas {
   const r: Escritas = {
     [`mercados.${ID_SHIBATA}`]: { nome: 'Shibata', ic: '🏪', site: SITE_SHIBATA, aprender: d.aprender === true, ordem: 0, corredores: lerListas(d.corredores) } satisfies Mercado,
     corredores: APAGAR, aprender: APAGAR,

@@ -255,6 +255,10 @@ describe('lerResposta — variações', () => {
     expect(quantos('')).toEqual({ erro: 'sem-bloco', anotacoes: [] });
     expect(quantos('Eu escrevi ACABOU no meio da frase\nOvos | Shibata: R$ 8,99').erro).toBe('sem-bloco');
   });
+  it('a caixa de código do Claude (```) com só o bloco colado também é lida', () => {
+    expect(quantos('```\nACABOU\n' + linhas + '\n```').anotacoes).toHaveLength(2);
+    expect(quantos('ACABOU\n' + linhas).anotacoes).toHaveLength(2);
+  });
   it('ACABOU achado, mas nada bate: produto desconhecido, mercado desconhecido, tudo "não achei"', () => {
     expect(quantos('ACABOU\nCarro | Shibata: R$ 8,99').erro).toBe('nada-bate');
     expect(quantos('ACABOU\nOvos | Zé do Armazém: R$ 8,99').erro).toBe('nada-bate');
@@ -306,7 +310,8 @@ describe('textoPergunta', () => {
     expect(t).toContain('- Sam\'s Club: (sem site)');
     expect(t).toContain('"não achei" em vez de chutar');
     expect(t).toContain('por unidade de medida');
-    expect(t).toContain('uma linha só com a palavra ACABOU');
+    expect(t).toContain('DENTRO DE UMA CAIXA DE CÓDIGO');
+    expect(t).toContain('```\nACABOU\nitem | Shibata');
     expect(t).toContain('item | Shibata: R$ preço (embalagem, marca) | Sam\'s Club: R$ preço (embalagem, marca)');
     expect(t).toContain('Exemplo: Ovos | Shibata: R$ 8,99 (20 un, Mantiqueira) | Sam\'s Club: R$ 9,49 (20 un, Cami)');
   });
@@ -314,7 +319,7 @@ describe('textoPergunta', () => {
     const { itens, mercados } = cenario();
     const t = textoPergunta('X', lista, [{ nome: 'Shibata', site: '' }, { nome: "Sam's Club", site: '' }]);
     const exemplo = t.slice(t.indexOf('Exemplo: ') + 9).split('\n')[0]!;
-    expect(lerResposta(`ACABOU\n${exemplo}`, itens, mercados).anotacoes).toHaveLength(2);
+    expect(lerResposta(`Análise...\n\`\`\`\nACABOU\n${exemplo}\n\`\`\``, itens, mercados).anotacoes).toHaveLength(2);
   });
   it('com 3 mercados e com 1 mercado só (logo depois da migração), sem cidade, sem lista', () => {
     const tres = textoPergunta('X', lista, [...dois, { nome: 'Atacadão', site: 'https://a.com' }]);
