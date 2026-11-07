@@ -166,7 +166,7 @@ input { -webkit-user-select: text; user-select: text; font: inherit; color: var(
 .aviso.on { transform: none; opacity: 1; pointer-events: auto; }
 .aviso span { flex: 1; min-width: 0; }
 .aviso button { color: var(--ambar); font-weight: 800; text-decoration: underline; padding: 8px; }
-.veu { position: fixed; inset: 0; background: rgba(59, 47, 42, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
+.veu { position: fixed; inset: 0; bottom: var(--teclado, 0px); background: rgba(59, 47, 42, .45); display: flex; align-items: flex-end; justify-content: center; z-index: 10; }
 .folha { background: var(--papel); width: 100%; max-width: 560px; max-height: 88%; overflow-y: auto; border-radius: 26px 26px 0 0; padding: 20px 18px max(28px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 12px; animation: sobe .25s; scrollbar-width: none; }
 .folha.sem-anim { animation: none; }
 .folha::-webkit-scrollbar { display: none; }

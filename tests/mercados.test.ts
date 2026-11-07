@@ -66,6 +66,18 @@ describe('migração para vários mercados', () => {
     const velho = lerCasa({ ...(migrado as object), itens: { pao: { ...documentoAntigo().itens.pao, cor: 'horti' } } });
     expect(velho.itens.pao!.cor).toEqual({ shibata: 'horti' });
   });
+  it('conserto: mover corredor ANTES da migração criou "mercados.shibata" sem nome; a migração completa sem desfazer a ordem', () => {
+    const quebrado = { ...documentoAntigo(), mercados: { shibata: { corredores: [{ id: 'horti', nome: 'Hortifrúti', ic: '🥬' }, { id: 'padaria', nome: 'Padaria', ic: '🥖' }] } } } as Record<string, unknown>;
+    delete quebrado.corredores; delete quebrado.aprender;
+    const e = migracao(quebrado)!;
+    expect(e['mercados.shibata.nome']).toBe('Shibata');
+    expect('mercados.shibata.corredores' in e).toBe(false);
+    expect(e['itens.pao.cor']).toEqual({ shibata: 'padaria' });
+    const c = aplicar(lerCasa(quebrado), e);
+    expect(c.mercados.shibata!.nome).toBe('Shibata');
+    expect(c.mercados.shibata!.corredores.map(x => x.id)).toEqual(['horti', 'padaria']);
+    expect(migracao({ ...quebrado, mercados: { shibata: { ...(quebrado.mercados as any).shibata, nome: 'Shibata' } } })).toBeNull();
+  });
   it('a casa nova já nasce no formato novo', () => {
     expect(migracao(nova())).toBeNull();
     expect(lerCasa(nova())).toEqual(nova());

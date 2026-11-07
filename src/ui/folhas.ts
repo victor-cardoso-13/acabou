@@ -17,6 +17,18 @@ let abertaEm = 0;
 /** Só fecha ao tocar no fundo se o toque COMEÇOU no fundo (soltar o dedo depois de segurar não fecha). */
 let comecouNoFundo = false;
 
+/** iPhone: o teclado cobre a parte de baixo da tela sem avisar a página. Mede o que sobrou (visualViewport) e sobe a janela. */
+function ajustarTeclado(): void {
+  const v = window.visualViewport;
+  const px = v ? Math.max(0, Math.round(window.innerHeight - v.height - v.offsetTop)) : 0;
+  document.documentElement.style.setProperty('--teclado', `${px}px`);
+  const campo = document.activeElement as HTMLElement | null;
+  if (px > 0 && campo?.closest('#folha') && /^(INPUT|TEXTAREA)$/.test(campo.tagName)) campo.scrollIntoView({ block: 'center' });
+}
+window.visualViewport?.addEventListener('resize', ajustarTeclado);
+window.visualViewport?.addEventListener('scroll', ajustarTeclado);
+document.addEventListener('focusin', () => setTimeout(ajustarTeclado, 300));
+
 export function folhaAberta(): boolean { return $('folha').childElementCount > 0; }
 
 export function folha(html: string, liga?: () => void): void {
